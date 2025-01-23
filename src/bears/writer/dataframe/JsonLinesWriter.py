@@ -2,11 +2,11 @@ import io
 from typing import *
 
 import pandas as pd
+from pydantic import constr
+
 from bears.constants import DataLayout, FileFormat, Storage
-from bears.core.frame.DaskScalableDataFrame import DaskScalableDataFrame
 from bears.core.frame.ScalableDataFrame import ScalableDataFrame
 from bears.writer.dataframe.DataFrameWriter import DataFrameWriter
-from pydantic import constr
 
 
 class JsonLinesWriter(DataFrameWriter):
@@ -34,7 +34,7 @@ class JsonLinesWriter(DataFrameWriter):
     def _write_dask_sdf(
         self,
         destination: Union[io.IOBase, str],
-        sdf: DaskScalableDataFrame,
+        sdf: ScalableDataFrame,
         storage: Storage,
         is_dir: bool,
         name_function: Optional[Callable[[int], str]] = None,

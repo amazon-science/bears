@@ -1960,6 +1960,8 @@ class ScalableDataFrame(Registry, ABC):
 
     def as_dask(self, **kwargs) -> DaskDataFrame:
         _check_is_dask_installed()
+        import dask.dataframe as dd
+
         if "npartitions" not in kwargs and "chunksize" not in kwargs:
             kwargs["npartitions"] = 1  ## Create a dask dataframe with a single partition.
         return dd.from_pandas(self.pandas(), **kwargs)

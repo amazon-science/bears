@@ -41,9 +41,9 @@ if _IS_RAY_INSTALLED:
 
 if _IS_DASK_INSTALLED:
     import dask.dataframe as dd
-    from dask.dataframe.core import DataFrame as DaskDataFrame
+    from dask.dataframe import DataFrame as DaskDataFrame
+    from dask.dataframe import Series as DaskSeries
     from dask.dataframe.core import Scalar as DaskScalar
-    from dask.dataframe.core import Series as DaskSeries
 
     class DaskScalableDataFrame(ScalableDataFrame):
         layout = DataLayout.DASK
