@@ -2,7 +2,7 @@ import io
 from abc import ABC, abstractmethod
 from typing import *
 
-from pydantic import conint, constr, root_validator
+from pydantic import conint, constr, model_validator
 
 from bears.constants import DataLayout, FileContents, MLTypeSchema, Parallelize, Storage
 from bears.core.frame.ScalableDataFrame import ScalableDataFrame, ScalableDataFrameRawType
@@ -49,10 +49,11 @@ class DataFrameWriter(Writer, ABC):
     allow_missing_columns: bool = False
     num_rows: Optional[conint(ge=1)] = None
     num_chunks: Optional[conint(ge=1)] = None
-    ## TODO: implement chunk_size: Optional[Union[conint(ge=1), constr(regex=String.FILE_SIZE_REGEX)]] = None
+    ## TODO: implement chunk_size: Optional[Union[conint(ge=1), constr(pattern=String.FILE_SIZE_REGEX)]] = None
     parallelize: Parallelize = Parallelize.threads
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def check_df_writer_params(cls, params: Dict):
         params: Dict = Writer.convert_params(params)
         set_param_from_alias(

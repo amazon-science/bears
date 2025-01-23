@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from typing import *
 
 import numpy as np
-from pydantic import Extra, Field, confloat, conint, constr, root_validator
+from pydantic import ConfigDict, Field, confloat, conint, constr, model_validator
 
 from bears.constants import FILE_FORMAT_TO_FILE_ENDING_MAP, FileContents, FileFormat, MLTypeSchema, Storage
 from bears.FileMetadata import FileMetadata
@@ -41,23 +41,22 @@ class Reader(Parameters, Registry, ABC):
     retry_wait: confloat(ge=0.0) = 5.0
     shuffled_multi_read: bool = True
 
-    class Config(Parameters.Config):
-        extra = Extra.ignore
+    model_config = ConfigDict(extra="ignore")
 
     class Params(Parameters):
         """
         BaseModel for parameters. Expected to be overridden by subclasses.
         """
 
-        class Config(Parameters.Config):
-            ## Allow extra keyword parameters to be used when initializing the class.
-            ## These will be forwarded to the respective reader method like .read_csv, .read_json, etc.
-            extra = Extra.allow
+        ## Allow extra keyword parameters to be used when initializing the class.
+        ## These will be forwarded to the respective reader method like .read_csv, .read_json, etc.
+        model_config = ConfigDict(extra="ignore")
 
     params: Params = Field(default_factory=Params)
     filter_kwargs: bool = True
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def convert_params(cls, params: Dict) -> Dict:
         Alias.set_retry(params)
         params["params"] = cls._convert_params(cls.Params, params.get("params"))
@@ -69,7 +68,7 @@ class Reader(Parameters, Registry, ABC):
 
     def filtered_params(self, *reader_fn: Union[Callable, Tuple[Callable, ...]]) -> Dict:
         filtered_params: Dict[str, Any] = {
-            **self.params.dict(),
+            **self.params.model_dump(),
         }
         if self.filter_kwargs:
             filtered_params: Dict[str, Any] = filter_kwargs(reader_fn, **filtered_params)

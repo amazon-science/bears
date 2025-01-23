@@ -3,7 +3,6 @@ from typing import *
 
 import numpy as np
 from pydantic import constr
-from pydantic.typing import Literal
 
 from bears.constants import FileContents, FileFormat, Storage
 from bears.reader.asset.audio.AudioReader import AudioReader
@@ -38,7 +37,7 @@ with optional_dependency("torchaudio"):
                 source: io.BytesIO = io.BytesIO(S3Util.stream_s3_object(source).read())
             img: np.ndarray = iio.imread(
                 source,
-                **self.params.dict(),
+                **self.params.model_dump(),
             )
             if not postprocess:
                 return img

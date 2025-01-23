@@ -1,23 +1,21 @@
 import functools
-import inspect
 import json
 import typing
 from abc import ABC
 from typing import *
 
 import numpy as np
-import typing_extensions
 from autoenum import AutoEnum
 from pydantic import (
     BaseModel,
-    Extra,
-    Field,
+    ConfigDict,
+    PydanticSchemaGenerationError,
     constr,
-    create_model_from_typeddict,
-    root_validator,
+    create_model,
+    model_validator,
     validate_arguments,
+    validate_call,
 )
-from pydantic.fields import Undefined
 
 from ._function import call_str_to_params, get_fn_spec, is_function, params_to_call_str
 from ._string import NeverFailJsonEncoder, String
@@ -55,36 +53,26 @@ class classproperty(property):
 
 
 def safe_validate_arguments(f):
-    names_to_fix = {n for n in BaseModel.__dict__ if not n.startswith("_")}
-
-    @functools.wraps(f)
-    def wrapper(*args, **kwargs):
-        kwargs = {n[:-1] if n[:-1] in names_to_fix else n: v for n, v in kwargs.items()}
-        return f(*args, **kwargs)
-
-    def _create_param(p: inspect.Parameter) -> inspect.Parameter:
-        default = Undefined if p.default is inspect.Parameter.empty else p.default
-        return p.replace(name=f"{p.name}_", default=Field(default, alias=p.name))
-
-    sig = inspect.signature(f)
-    sig = sig.replace(
-        parameters=[_create_param(p) if n in names_to_fix else p for n, p in sig.parameters.items()]
-    )
-
-    wrapper.__signature__ = sig
-    wrapper.__annotations__ = {f"{n}_" if n in names_to_fix else n: v for n, v in f.__annotations__.items()}
-
     try:
-        return validate_arguments(
-            wrapper,
+
+        @functools.wraps(f)
+        @validate_call(
             config={
-                "allow_population_by_field_name": True,
+                ## Allow population of a field by it's original name and alias (if False, only alias is used)
+                "populate_by_name": True,
+                ## Perform type checking of non-BaseModel types (if False, throws an error)
                 "arbitrary_types_allowed": True,
-            },
+            }
         )
+        def wrapper(*args, **kwargs):
+            return f(*args, **kwargs)
+
+        return wrapper
+    except PydanticSchemaGenerationError as e:
+        raise e
     except Exception as e:
         raise ValueError(
-            f"Error creating model for function {get_fn_spec(f).resolved_name}."
+            f"Error creating Pydantic v2 model to validate function '{get_fn_spec(f).resolved_name}':"
             f"\nEncountered Exception: {String.format_exception_msg(e)}"
         )
 
@@ -227,14 +215,12 @@ class Registry(ABC):
         }
         cls._classvars_typing_dict: ClassVar[Dict[str, Any]] = classvars_typing_dict
 
-        class Config(Parameters.Config):
-            extra = Extra.ignore
+        fields = {k: (v, None) for k, v in classvars_typing_dict.items()}
 
-        cls._classvars_BaseModel: ClassVar[Type[BaseModel]] = create_model_from_typeddict(
-            typing_extensions.TypedDict(f"{cls.__name__}_ClassVarsBaseModel", classvars_typing_dict),
-            warnings=False,
-            __config__=Config,
+        cls._classvars_BaseModel: ClassVar[Type[BaseModel]] = create_model(
+            f"{cls.__name__}_ClassVarsBaseModel", **fields
         )
+        cls._classvars_BaseModel.model_config = {"extra": "ignore"}
 
     @classmethod
     def __validate_classvars_BaseModel(cls):
@@ -411,6 +397,24 @@ class Parameters(BaseModel, ABC):
     aliases: ClassVar[Tuple[str, ...]] = tuple()
     dict_exclude: ClassVar[Tuple[str, ...]] = tuple()
 
+    ## Changes from Pydantic V1 to V2 config schema:
+    ## https://docs.pydantic.dev/2.1/blog/pydantic-v2-alpha/#changes-to-config
+    model_config = ConfigDict(
+        ## Only string literal is needed for extra parameter
+        ## https://docs.pydantic.dev/latest/api/config/#pydantic.config.ConfigDict.extra
+        extra="forbid",
+        ## Renamed from "allow_mutation":
+        ## https://docs.pydantic.dev/latest/api/config/#pydantic.config.ConfigDict.frozen
+        frozen=True,
+        ## Underscores-as-private is enabled permanently (see "V1 to V2" URL above):
+        # underscore_attrs_are_private=True,
+        ## Renamed from validate_all
+        ## https://docs.pydantic.dev/latest/api/config/#pydantic.config.ConfigDict.validate_default
+        validate_default=True,
+        ## https://docs.pydantic.dev/latest/api/config/#pydantic.config.ConfigDict.arbitrary_types_allowed
+        arbitrary_types_allowed=True,
+    )
+
     def __init__(self, *args, **kwargs):
         try:
             super().__init__(*args, **kwargs)
@@ -426,30 +430,35 @@ class Parameters(BaseModel, ABC):
 
     @classmethod
     def param_names(cls, **kwargs) -> Set[str]:
-        # superclass_params: Set[str] = set(super(Parameters, cls).schema(**kwargs)['properties'].keys())
-        class_params: Set[str] = set(cls.schema(**kwargs)["properties"].keys())
-        return class_params  # .union(superclass_params)
+        return set(cls.model_json_schema(**kwargs).get("properties", {}).keys())
 
     @classmethod
     def param_default_values(cls, **kwargs) -> Dict:
-        return {
-            param: param_schema["default"]
-            for param, param_schema in cls.schema(**kwargs)["properties"].items()
-            if "default" in param_schema  ## The default value might be None
-        }
+        properties = cls.model_json_schema(**kwargs).get("properties", {})
+        return {param: prop.get("default") for param, prop in properties.items() if "default" in prop}
+
+    @classmethod
+    def set_param_default_values(cls, params: Dict):
+        ## Apply default values for fields not present in the input
+        for field_name, field in cls.model_fields.items():
+            if field_name not in params:
+                if field.default is not None:
+                    params[field_name] = field.default
+                elif field.default_factory is not None:
+                    params[field_name] = field.default_factory()
 
     @classmethod
     def _clear_extra_params(cls, params: Dict) -> Dict:
         return {k: v for k, v in params.items() if k in cls.param_names()}
 
-    def dict(self, *args, exclude: Optional[Any] = None, **kwargs) -> Dict:
+    def model_dump(self, *args, exclude: Optional[Any] = None, **kwargs) -> Dict:
         exclude: Set[str] = as_set(get_default(exclude, [])).union(as_set(self.dict_exclude))
-        return super(Parameters, self).dict(*args, exclude=exclude, **kwargs)
+        return super().model_dump(exclude=exclude, **kwargs)
 
     def json(self, *args, encoder: Optional[Any] = None, indent: Optional[int] = None, **kwargs) -> str:
         if encoder is None:
             encoder = functools.partial(json.dumps, cls=NeverFailJsonEncoder, indent=indent)
-        return super(Parameters, self).json(*args, encoder=encoder, **kwargs)
+        return super().model_dump_json(**kwargs)  # drop encoder to keep it minimal
 
     @classproperty
     def _constructor(cls) -> ParametersSubclass:
@@ -460,24 +469,12 @@ class Parameters(BaseModel, ABC):
         out: str = f"{self.class_name} with params:\n{params_str}"
         return out
 
-    class Config:
-        ## Ref for Pydantic mutability: https://pydantic-docs.helpmanual.io/usage/models/#faux-immutability
-        allow_mutation = False
-        ## Ref for Extra.forbid: https://pydantic-docs.helpmanual.io/usage/model_config/#options
-        extra = Extra.forbid
-        ## Ref for Pydantic private attributes: https://pydantic-docs.helpmanual.io/usage/models/#private-model-attributes
-        underscore_attrs_are_private = True
-        ## Validates default values. Ref: https://pydantic-docs.helpmanual.io/usage/model_config/#options
-        validate_all = True
-        ## Validates typing by `isinstance` check. Ref: https://pydantic-docs.helpmanual.io/usage/model_config/#options
-        arbitrary_types_allowed = True
-
     @staticmethod
     def _convert_params(Class: Type[BaseModel], d: Union[Type[BaseModel], Dict]):
-        if type(d) == Class:
+        if type(d) is Class:
             return d
         if isinstance(d, BaseModel):
-            return Class(**d.dict(exclude=None))
+            return Class(**d.model_dump(exclude=None))
         if d is None:
             return Class()
         if isinstance(d, dict):
@@ -486,14 +483,14 @@ class Parameters(BaseModel, ABC):
 
     def update_params(self, **new_params) -> Generic[ParametersSubclass]:
         ## Since Parameters class is immutable, we create a new one:
-        overidden_params: Dict = {
-            **self.dict(exclude=None),
+        overridden_params: Dict = {
+            **self.model_dump(exclude=None),
             **new_params,
         }
-        return self._constructor(**overidden_params)
+        return self._constructor(**overridden_params)
 
     def copy(self, **kwargs) -> Generic[ParametersSubclass]:
-        return super(Parameters, self).copy(**kwargs)
+        return super().model_copy(**kwargs)
 
     def clone(self, **kwargs) -> Generic[ParametersSubclass]:
         return self.copy(**kwargs)
@@ -507,15 +504,16 @@ class UserEnteredParameters(Parameters):
     Ref: https://github.com/samuelcolvin/pydantic/issues/1147#issuecomment-571109376
     """
 
-    @root_validator(pre=True)
-    def convert_params_to_lowercase(cls, params: Dict):
-        return {str(k).strip().lower(): v for k, v in params.items()}
+    @model_validator(mode="before")
+    @classmethod
+    def convert_params_to_lowercase(cls, values: Dict) -> Dict:
+        return {str(k).strip().lower(): v for k, v in values.items()}
 
 
 class MutableParameters(Parameters):
-    class Config(Parameters.Config):
-        ## Ref on mutability: https://pydantic-docs.helpmanual.io/usage/models/#faux-immutability
-        allow_mutation = True
+    model_config = ConfigDict(
+        frozen=False,  ## replaces allow_mutation=True
+    )
 
 
 class MutableUserEnteredParameters(UserEnteredParameters, MutableParameters):
@@ -531,8 +529,7 @@ class MappedParameters(Parameters, ABC):
 
     _mapping: ClassVar[Dict[Union[Tuple[str, ...], str], Any]]
 
-    class Config(Parameters.Config):
-        extra = Extra.allow
+    model_config = ConfigDict(extra="allow")
 
     name: constr(min_length=1)
     args: Tuple = ()
@@ -548,17 +545,18 @@ class MappedParameters(Parameters, ABC):
             else:
                 cls._mapping[String.str_normalize(key)] = val
 
-    @root_validator(pre=True)
-    def check_mapped_params(cls, params: Dict) -> Dict:
-        if String.str_normalize(params["name"]) not in cls._mapping:
+    @model_validator(mode="before")
+    @classmethod
+    def check_mapped_params(cls, values: Dict) -> Dict:
+        if String.str_normalize(values["name"]) not in cls._mapping:
             raise ValueError(
-                f'''`name`="{params["name"]}" was not found in the lookup. '''
+                f'''`name`="{values["name"]}" was not found in the lookup. '''
                 f"""Valid values for `name`: {set(cls._mapping.keys())}"""
             )
-        return params
+        return values
 
-    def dict(self, *args, exclude: Optional[Any] = None, **kwargs) -> Dict:
-        params: Dict = super(Parameters, self).dict(*args, exclude=exclude, **kwargs)
+    def model_dump(self, *args, exclude: Optional[Any] = None, **kwargs) -> Dict:
+        params: Dict = super(Parameters, self).model_dump(*args, exclude=exclude, **kwargs)
         if exclude is not None and "name" in exclude:
             params.pop("name", None)
         else:
@@ -580,7 +578,7 @@ class MappedParameters(Parameters, ABC):
 
     @property
     def kwargs(self) -> Dict:
-        return self.dict(exclude={"name", "args"} | set(self.dict_exclude))
+        return self.model_dump(exclude={"name", "args"} | set(self.dict_exclude))
 
     def to_call_str(self) -> str:
         args: List = list(self.args)

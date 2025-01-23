@@ -10,8 +10,7 @@ from typing import *
 
 import numpy as np
 import pandas as pd
-from pydantic import conint, constr, root_validator
-from pydantic.typing import Literal
+from pydantic import conint, constr, model_validator
 
 from bears.constants import (
     LAZY_SDF_DATA_LAYOUTS,
@@ -506,7 +505,7 @@ class ScalableDataFrame(Registry, ABC):
                 might mean we drop a negligible number of rows, which should not affect the overall training procuedure.
         :return: yield a single smaller ScalableDataFrame.
         """
-        ## TODO: implement chunk_size: Optional[Union[conint(ge=1), constr(regex=String.FILE_SIZE_REGEX)]] = None
+        ## TODO: implement chunk_size: Optional[Union[conint(ge=1), constr(pattern=String.FILE_SIZE_REGEX)]] = None
         ## docstring for chunk_size: maximum size of each ScalableDataFrame in bytes (int) or string (e.g. "10MB").
         try:
             mapped_sdf_chunks: Deque[Dict[str, Union[int, Future]]] = deque()
@@ -2012,8 +2011,7 @@ class ScalableDataFrame(Registry, ABC):
 ScalableDataFrameOrRaw = Union[ScalableDataFrame, ScalableDataFrameRawType]
 ScalableOrRaw = Union[ScalableSeriesOrRaw, ScalableDataFrameOrRaw]
 
-to_sdf: Callable = ScalableDataFrame.of
-to_ss: Callable = ScalableSeries.of
+CompressedScalableDataFrame = "CompressedScalableDataFrame"
 
 
 class CompressedScalableDataFrame(Parameters):
@@ -2022,8 +2020,10 @@ class CompressedScalableDataFrame(Parameters):
     layout: DataLayout
     base64_encoding: bool = False
 
-    @root_validator(pre=False)
+    @model_validator(mode="before")
+    @classmethod
     def _set_params(cls, params: Dict) -> Dict:
+        cls.set_param_default_values(params)
         if params["base64_encoding"] is False and not isinstance(params["payload"], bytes):
             raise ValueError(
                 f"Must pass a bytes `payload` when passing `base64_encoding=False`; "

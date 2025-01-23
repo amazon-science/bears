@@ -8,7 +8,6 @@ from typing import *
 import numpy as np
 import pandas as pd
 from autoenum import AutoEnum
-from pydantic.typing import Literal
 
 from ._alias import set_param_from_alias
 from ._import import optional_dependency

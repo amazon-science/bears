@@ -3,7 +3,7 @@ import time
 from abc import ABC, abstractmethod
 from typing import *
 
-from pydantic import Extra, root_validator
+from pydantic import ConfigDict, model_validator
 
 from bears.constants import FILE_FORMAT_TO_FILE_ENDING_MAP, FileContents, FileFormat, Storage
 from bears.FileMetadata import FileMetadata
@@ -36,23 +36,22 @@ class Writer(Parameters, Registry, ABC):
     file_contents: ClassVar[Tuple[FileContents, ...]]
     streams: ClassVar[Tuple[Type[io.IOBase], ...]]
 
-    class Config(Parameters.Config):
-        extra = Extra.ignore
+    model_config = ConfigDict(extra="ignore")
 
     class Params(Parameters):
         """
         BaseModel for parameters. Expected to be overridden by subclasses.
         """
 
-        class Config(Parameters.Config):
-            ## Allow extra keyword parameters to be used when initializing the writer.
-            ## These will be forwarded to the respective writer method like .to_csv, .to_json, etc.
-            extra = Extra.allow
+        ## Allow extra keyword parameters to be used when initializing the writer.
+        ## These will be forwarded to the respective writer method like .to_csv, .to_json, etc.
+        model_config = ConfigDict(extra="allow")
 
     params: Params = {}
     filter_kwargs: bool = True
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def convert_params(cls, params: Dict):
         params["params"] = cls._convert_params(cls.Params, params.get("params"))
         return params
@@ -63,7 +62,7 @@ class Writer(Parameters, Registry, ABC):
 
     def filtered_params(self, *writer_fn: Union[Callable, Tuple[Callable, ...]]) -> Dict:
         filtered_params: Dict[str, Any] = {
-            **self.params.dict(),
+            **self.params.model_dump(),
         }
         if self.filter_kwargs:
             filtered_params: Dict[str, Any] = filter_kwargs(writer_fn, **filtered_params)

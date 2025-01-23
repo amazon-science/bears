@@ -3,7 +3,7 @@ import time
 from datetime import datetime, timedelta
 from typing import *
 
-from pydantic import confloat, root_validator
+from pydantic import confloat, model_validator
 
 from bears.util.language import Alias, MutableParameters, Parameters, String, set_param_from_alias
 from bears.util.logging import Log
@@ -25,7 +25,7 @@ class TimerError(Exception):
 class Timer(Parameters):
     task: str
     logger: Optional[Callable] = Log.info
-    silent: bool = (False,)
+    silent: bool = False
     single_line: bool = False  ## Single-line printing
     i: Optional[int] = None
     max_i: Optional[int] = None
@@ -37,7 +37,8 @@ class Timer(Parameters):
     def __init__(self, task: str = "", **kwargs):
         super(Timer, self).__init__(task=task, **kwargs)
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def _set_timer_params(cls, params: Dict) -> Dict:
         set_param_from_alias(params, param="logger", alias=["log"])
         Alias.set_silent(params, default=False)

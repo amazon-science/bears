@@ -5,7 +5,6 @@ from typing import *
 import numpy as np
 import pandas as pd
 from pydantic import confloat, conint
-from pydantic.typing import Literal
 
 from ._import import optional_dependency
 from ._structs import as_list, as_set, flatten1d, is_dict_like, is_list_like, is_set_like, is_sorted

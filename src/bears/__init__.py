@@ -6,3 +6,6 @@ from bears.FileMetadata import FileMetadata
 from bears.core.frame import ScalableDataFrame, ScalableSeries
 from bears.reader import Reader 
 from bears.writer import Writer
+
+to_sdf = ScalableDataFrame.of
+to_ss = ScalableSeries.of
