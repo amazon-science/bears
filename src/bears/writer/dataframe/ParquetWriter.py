@@ -5,7 +5,6 @@ from pandas.io.parquet import to_parquet as Pandas_to_parquet
 from pydantic import Field
 
 from bears.constants import DataLayout, FileFormat, Storage
-from bears.core.frame.DaskScalableDataFrame import DaskScalableDataFrame
 from bears.core.frame.ScalableDataFrame import ScalableDataFrame
 from bears.writer.dataframe.DataFrameWriter import DataFrameWriter
 
@@ -34,7 +33,7 @@ class ParquetWriter(DataFrameWriter):
     def _write_dask_sdf(
         self,
         destination: Union[io.IOBase, str],
-        sdf: DaskScalableDataFrame,
+        sdf: ScalableDataFrame,
         storage: Storage,
         is_dir: bool,
         name_function: Optional[Callable[[int], str]] = None,

@@ -5,9 +5,7 @@ from typing import *
 from pydantic import conint, constr, root_validator
 
 from bears.constants import DataLayout, FileContents, MLTypeSchema, Parallelize, Storage
-from bears.core.frame.DaskScalableDataFrame import DaskScalableDataFrame
 from bears.core.frame.ScalableDataFrame import ScalableDataFrame, ScalableDataFrameRawType
-from bears.writer.Writer import Writer
 from bears.util import (
     FileSystemUtil,
     Log,
@@ -26,6 +24,7 @@ from bears.util import (
 )
 from bears.util.aws import S3Util
 from bears.util.language._import import _check_is_dask_installed
+from bears.writer.Writer import Writer
 
 
 class DataFrameWriter(Writer, ABC):
@@ -267,7 +266,7 @@ class DataFrameWriter(Writer, ABC):
     def _write_sdf_single(
         self,
         destination: Union[io.IOBase, str],
-        sdf: Union[ScalableDataFrame, DaskScalableDataFrame],
+        sdf: Union[ScalableDataFrame],
         storage: Storage,
         **kwargs,
     ) -> Optional[str]:
@@ -291,7 +290,7 @@ class DataFrameWriter(Writer, ABC):
     def _write_sdf_multi(
         self,
         destination: str,  ## Do not allow writing multiple files to stream.
-        sdf: Union[ScalableDataFrame, DaskScalableDataFrame],
+        sdf: ScalableDataFrame,
         storage: Storage,
         file_name: Optional[constr(min_length=1)] = None,
         **kwargs,
@@ -309,7 +308,7 @@ class DataFrameWriter(Writer, ABC):
     def _write_sdf_multi_dask(
         self,
         destination_dir: str,  ## Local/remote folder path. Do not allow writing multiple files to stream.
-        sdf: DaskScalableDataFrame,
+        sdf: ScalableDataFrame,
         storage: Storage,
         file_name: constr(min_length=1),
         **kwargs,
@@ -470,7 +469,7 @@ class DataFrameWriter(Writer, ABC):
     def _write_dask_sdf(
         self,
         destination: Union[io.IOBase, str],
-        sdf: DaskScalableDataFrame,
+        sdf: ScalableDataFrame,
         storage: Storage,
         is_dir: bool,
         name_function: Optional[Callable[[int], str]] = None,
@@ -479,7 +478,7 @@ class DataFrameWriter(Writer, ABC):
         """
         Writes to a stream/file/folder using Dask-specific implementations of to_csv, to_parquet, etc.
         :param destination: stream/file/folder.
-        :param sdf: DaskScalableDataFrame to write.
+        :param sdf: ScalableDataFrame to write.
         :param storage: the storage medium.
         :param is_dir: whether the destination is a directory or file. When is_dir=False, this method should write a
             single file.

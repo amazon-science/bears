@@ -14,9 +14,9 @@ DaskScalableSeries = "DaskScalableSeries"
 
 if _IS_DASK_INSTALLED:
     import dask.array as da
-    from dask.dataframe.core import DataFrame as DaskDataFrame
+    from dask.dataframe import DataFrame as DaskDataFrame
+    from dask.dataframe import Series as DaskSeries
     from dask.dataframe.core import Scalar as DaskScalar
-    from dask.dataframe.core import Series as DaskSeries
 
     class DaskScalableSeries(ScalableSeries):
         layout = DataLayout.DASK

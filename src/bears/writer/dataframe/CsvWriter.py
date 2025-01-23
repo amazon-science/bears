@@ -2,12 +2,12 @@ import io
 from typing import *
 
 import pandas as pd
-from bears.constants import DataLayout, FileFormat, Storage
-from bears.core.frame.DaskScalableDataFrame import DaskScalableDataFrame
-from bears.core.frame.ScalableDataFrame import ScalableDataFrame
-from bears.writer.dataframe.DataFrameWriter import DataFrameWriter
-from bears.util import String
 from pydantic import constr, validator
+
+from bears.constants import DataLayout, FileFormat, Storage
+from bears.core.frame.ScalableDataFrame import ScalableDataFrame
+from bears.util import String
+from bears.writer.dataframe.DataFrameWriter import DataFrameWriter
 
 
 class CsvWriter(DataFrameWriter):
@@ -44,7 +44,7 @@ class CsvWriter(DataFrameWriter):
     def _write_dask_sdf(
         self,
         destination: Union[io.IOBase, str],
-        sdf: DaskScalableDataFrame,
+        sdf: ScalableDataFrame,
         storage: Storage,
         is_dir: bool,
         name_function: Optional[Callable[[int], str]] = None,

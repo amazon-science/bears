@@ -46,7 +46,7 @@ def not_impl(
 ## ======================== List utils ======================== ##
 def is_list_like(l: Any) -> bool:
     with optional_dependency("dask"):
-        from dask.dataframe.core import Series as DaskSeries
+        from dask.dataframe import Series as DaskSeries
 
         if isinstance(l, (list, tuple, ValuesView, ItemsView, pd.Series, DaskSeries)):
             return True

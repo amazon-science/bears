@@ -10,7 +10,7 @@ authors = [
 ]
 description = ""
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11.11"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
@@ -22,8 +22,8 @@ dependencies = [
     "requests",
     "pyyaml",
     "urllib3",
-    "pandas==1.*",
-    "numpy==1.*",
+    "pandas==2.*",
+    "numpy",
     "pydantic==1.10.15",
     "xlrd",
     "XlsxWriter",
@@ -38,13 +38,12 @@ dependencies = [
 
 [project.optional-dependencies]
 all = [
-    "pytest",
     "orjson",
-    "ray==2.9.2",
+    "ray==2.41.0",
     "ray[default]",
+    "dask==2024.10.0",
     "dask[complete]",
-    "dask",
-    "torch==2.3.0",
+    "torch>=2.5.1",
     "imageio",
 ]
 

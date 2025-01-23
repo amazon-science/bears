@@ -5,7 +5,6 @@ from numpy import savez as Pandas_to_npz
 from pydantic import Field
 
 from bears.constants import DataLayout, FileFormat, Storage
-from bears.core.frame.DaskScalableDataFrame import DaskScalableDataFrame
 from bears.core.frame.ScalableDataFrame import DaskDataFrame, ScalableDataFrame
 from bears.writer.dataframe.DataFrameWriter import DataFrameWriter
 
@@ -37,7 +36,7 @@ class NpzWriter(DataFrameWriter):
     def _write_dask_sdf(
         self,
         destination: Union[io.IOBase, str],
-        sdf: DaskScalableDataFrame,
+        sdf: ScalableDataFrame,
         storage: Storage,
         is_dir: bool,
         name_function: Optional[Callable[[int], str]] = None,
