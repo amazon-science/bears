@@ -7,7 +7,7 @@ import types
 from ast import literal_eval
 from typing import *
 
-from pydantic import BaseModel, Extra, root_validator
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from ._utils import get_default
 
@@ -130,20 +130,17 @@ class FunctionSpec(BaseModel):
     default_kwargs: Dict[str, Any]
     ignored_args: Tuple[str, ...] = ("self", "cls")
 
-    class Config:
-        ## Ref for Pydantic mutability: https://pydantic-docs.helpmanual.io/usage/models/#faux-immutability
-        allow_mutation = False
-        ## Ref for Extra.forbid: https://pydantic-docs.helpmanual.io/usage/model_config/#options
-        extra = Extra.forbid
-        ## Ref for Pydantic private attributes: https://pydantic-docs.helpmanual.io/usage/models/#private-model-attributes
-        underscore_attrs_are_private = True
-        ## Validates default values. Ref: https://pydantic-docs.helpmanual.io/usage/model_config/#options
-        validate_all = True
-        ## Validates typing by `isinstance` check. Ref: https://pydantic-docs.helpmanual.io/usage/model_config/#options
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(
+        frozen=True,
+        extra="forbid",
+        arbitrary_types_allowed=True,
+        validate_default=True,
+    )
 
-    @root_validator(pre=False)
+    @model_validator(mode="before")
+    @classmethod
     def _remove_ignored(cls, params: Dict) -> Dict:
+        params.setdefault("ignored_args", cls.model_fields["ignored_args"].default)
         ignored_args: Tuple[str, ...] = params["ignored_args"]
         params["args"] = tuple(arg_name for arg_name in params["args"] if arg_name not in ignored_args)
         params["kwargs"] = tuple(arg_name for arg_name in params["kwargs"] if arg_name not in ignored_args)

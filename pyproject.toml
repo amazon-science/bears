@@ -24,7 +24,7 @@ dependencies = [
     "urllib3",
     "pandas==2.*",
     "numpy",
-    "pydantic==1.10.15",
+    "pydantic>=2.10.5",
     "xlrd",
     "XlsxWriter",
     "openpyxl",

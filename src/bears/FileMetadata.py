@@ -5,7 +5,7 @@ import tempfile
 from typing import *
 
 import requests
-from pydantic import constr, root_validator
+from pydantic import constr, model_validator
 
 from bears.constants import (
     FILE_ENDING_TO_FILE_FORMAT_MAP,
@@ -22,42 +22,45 @@ FileMetadata = "FileMetadata"
 
 
 class FileMetadata(Parameters):
-    name: Optional[constr(min_length=1, max_length=63, strip_whitespace=True)]
+    name: Optional[constr(min_length=1, max_length=63, strip_whitespace=True)] = None
     path: Union[constr(min_length=1, max_length=1023), Any]
-    storage: Optional[Storage]
-    format: Optional[FileFormat]
-    contents: Optional[FileContents]
-    file_glob: Optional[str]
-    data_schema: Optional[MLTypeSchema]
+    storage: Optional[Storage] = None
+    format: Optional[FileFormat] = None
+    contents: Optional[FileContents] = None
+    file_glob: Optional[str] = None
+    data_schema: Optional[MLTypeSchema] = None
 
     @classmethod
     def of(cls, path: Union[io.IOBase, FileMetadata, Dict, str], **kwargs) -> "FileMetadata":
         if isinstance(path, FileMetadata):
-            path: Dict = path.dict(exclude=None)
+            path: Dict = path.model_dump(exclude=None)
         elif isinstance(path, (str, pathlib.Path)):
             path: Dict = dict(path=str(path))
         elif isinstance(path, io.IOBase):
             path: Dict = dict(path=path)
         assert isinstance(path, dict)
-        path: Dict = {**path, **kwargs}
-        return FileMetadata(**path)
+        params: Dict = {**path, **kwargs}
+        return cls(**params)
 
-    @root_validator(pre=True)
-    def set_params(cls, params: Dict):
+    @model_validator(mode="before")
+    @classmethod
+    def _set_params(cls, params: Dict):
         Alias.set_format(params)
+        if params.get("path") is None:
+            raise ValueError("'path' must be provided.")
         if isinstance(params["path"], pathlib.Path):
             params["path"]: str = str(params["path"])
         if isinstance(params["path"], str) and params["path"].startswith("~"):
             params["path"]: str = FileSystemUtil.expand_dir(params["path"])
 
-        if "storage" not in params:
+        if params.get("storage") is None:
             params["storage"]: Storage = cls.detect_storage(params["path"])
         if params["storage"] is Storage.STREAM:
             raise ValueError("Storage cannot be a stream.")
         elif params["storage"] is Storage.LOCAL_FILE_SYSTEM:
             params["path"]: str = FileSystemUtil.expand_dir(params["path"])
 
-        if "format" not in params:
+        if params.get("format") is None:
             format: Optional[FileFormat] = cls.detect_file_format(params["path"], raise_error=False)
             if format is not None:
                 params["format"] = format
@@ -69,7 +72,8 @@ class FileMetadata(Parameters):
     @classmethod
     @safe_validate_arguments
     def detect_storage(
-        cls, path: Union[io.IOBase, constr(min_length=1, max_length=1023)]
+        cls,
+        path: Union[io.IOBase, constr(min_length=1, max_length=1023)],
     ) -> Optional[Storage]:
         if isinstance(path, io.IOBase) and hasattr(path, "read"):
             return Storage.STREAM
@@ -239,7 +243,7 @@ class FileMetadata(Parameters):
             return self.path
         subdir_path: str = self.path_in_dir(path, is_dir=True, **kwargs)
         if mkdir:
-            FileMetadata(path=subdir_path, **self.dict(exclude={"path"})).mkdir(raise_error=raise_error)
+            FileMetadata(path=subdir_path, **self.model_dump(exclude={"path"})).mkdir(raise_error=raise_error)
         if return_metadata:
             return self.update_params(path=subdir_path)
         return subdir_path

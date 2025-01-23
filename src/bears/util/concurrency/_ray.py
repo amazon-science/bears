@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from math import inf
 from typing import *
 
-from pydantic import Extra, confloat, conint
+from pydantic import ConfigDict, confloat, conint
 
 from bears.util.language import (
     Alias,
@@ -293,8 +293,7 @@ def max_num_resource_actors(
 
 
 class RayInitConfig(UserEnteredParameters):
-    class Config(UserEnteredParameters.Config):
-        extra = Extra.allow
+    model_config = ConfigDict(extra="allow")
 
     ## Default values:
     address: str = "auto"

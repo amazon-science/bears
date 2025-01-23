@@ -2,8 +2,6 @@ import types
 from contextlib import contextmanager
 from typing import *
 
-from pydantic.typing import Literal
-
 
 @contextmanager
 def optional_dependency(

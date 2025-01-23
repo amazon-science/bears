@@ -2,7 +2,7 @@ import re
 from typing import *
 
 import numpy as np
-from pydantic import conint, constr, root_validator
+from pydantic import conint, constr, model_validator
 
 from bears.constants import (
     DATA_ML_TYPES,
@@ -468,7 +468,8 @@ class Schema(Parameters):
     predictions_schema: MLTypeSchema = {}
     ground_truths_schema: MLTypeSchema = {}
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def _set_schema_params(cls, params: Dict) -> Dict:
         try:
             ground_truths_schema: MLTypeSchema = MLType.convert_values(params.get("ground_truths_schema", {}))
@@ -591,10 +592,10 @@ class Schema(Parameters):
                 f"`features_schema` already set and cannot be overridden on {self.class_name}. "
                 f"Current schema: \n{self}"
             )
-        return Schema(**{**self.dict(), "features_schema": features_schema})
+        return Schema(**{**self.model_dump(), "features_schema": features_schema})
 
     def drop_features(self) -> Schema:
-        return Schema(**self.dict(exclude={"features_schema"}))
+        return Schema(**self.model_dump(exclude={"features_schema"}))
 
     def set_predictions(self, predictions_schema: MLTypeSchema, override: bool = False) -> Schema:
         if self.has_predictions and override is False:
@@ -602,10 +603,10 @@ class Schema(Parameters):
                 f"`predictions_schema` already set and cannot be overridden on {self.class_name}. "
                 f"Current schema: \n{self}"
             )
-        return Schema(**{**self.dict(), "predictions_schema": predictions_schema})
+        return Schema(**{**self.model_dump(), "predictions_schema": predictions_schema})
 
     def drop_predictions(self) -> Schema:
-        return Schema(**self.dict(exclude={"predictions_schema"}))
+        return Schema(**self.model_dump(exclude={"predictions_schema"}))
 
     def predictions_to_features(self) -> Schema:
         return self.drop_predictions().set_features(
@@ -619,10 +620,10 @@ class Schema(Parameters):
                 f"`ground_truths_schema` already set and cannot be overridden on {self.class_name}. "
                 f"Current schema: \n{self}"
             )
-        return Schema(**{**self.dict(), "ground_truths_schema": ground_truths_schema})
+        return Schema(**{**self.model_dump(), "ground_truths_schema": ground_truths_schema})
 
     def drop_ground_truths(self) -> Schema:
-        return Schema(**self.dict(exclude={"ground_truths_schema"}))
+        return Schema(**self.model_dump(exclude={"ground_truths_schema"}))
 
     def ground_truths_to_features(self) -> Schema:
         return self.drop_ground_truths().set_features(

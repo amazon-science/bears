@@ -3,7 +3,6 @@ from typing import *
 
 import numpy as np
 from pydantic import constr
-from pydantic.typing import Literal
 
 from bears.constants import FileContents, FileFormat, Storage
 from bears.asset import Image
@@ -39,7 +38,7 @@ with optional_dependency("imageio"):
                 source: io.BytesIO = io.BytesIO(S3Util.stream_s3_object(source).read())
             img: np.ndarray = iio.imread(
                 source,
-                **self.params.dict(),
+                **self.params.model_dump(),
             )
             return Image(
                 path=source if storage in {Storage.S3, Storage.LOCAL_FILE_SYSTEM} else None,
@@ -70,7 +69,7 @@ with optional_dependency("imageio"):
                 source: io.BytesIO = io.BytesIO(S3Util.stream_s3_object(source).read())
             img: np.ndarray = iio.imread(
                 source,
-                **self.params.dict(),
+                **self.params.model_dump(),
             )
             if self.channels == "first":
                 img: np.ndarray = np.moveaxis(img, -1, 0)

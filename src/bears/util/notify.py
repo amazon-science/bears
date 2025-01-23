@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import *
 
 import requests
-from pydantic import BaseModel, constr, root_validator
+from pydantic import BaseModel, constr, model_validator
 
 from bears.constants import Status
 from bears.util.language import Parameters, Registry, String, get_default, safe_validate_arguments
@@ -15,7 +15,8 @@ NotifierSubclass = TypeVar("NotifierSubclass", bound="Notifier")
 class Notifier(Parameters, Registry, ABC):
     name: constr(min_length=1)
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def convert_params(cls, params: Dict):
         params["name"] = cls.class_name
         return params
@@ -128,7 +129,7 @@ class NoopNotifier(Notifier):
 class ChimeNotifier(Notifier):
     aliases = ["chime"]
 
-    webhook: constr(min_length=10, max_length=1024, regex="^.*hooks.chime.aws.*$", strip_whitespace=True)
+    webhook: constr(min_length=10, max_length=1024, pattern="^.*hooks.chime.aws.*$", strip_whitespace=True)
 
     @safe_validate_arguments
     def send(
@@ -156,7 +157,7 @@ class DiscordNotifier(Notifier):
     aliases = ["discord"]
 
     webhook: constr(
-        min_length=10, max_length=1024, regex="^.*discord.com/api/webhooks/.*$", strip_whitespace=True
+        min_length=10, max_length=1024, pattern="^.*discord.com/api/webhooks/.*$", strip_whitespace=True
     )
 
     @safe_validate_arguments

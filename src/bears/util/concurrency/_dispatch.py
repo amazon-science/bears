@@ -5,7 +5,7 @@ from typing import *
 
 import numpy as np
 import pandas as pd
-from pydantic import Extra, root_validator
+from pydantic import model_validator, ConfigDict
 
 from bears.constants import Parallelize
 from bears.util.language import (
@@ -85,14 +85,14 @@ class ExecutorConfig(Parameters):
             )
     """
 
-    class Config(Parameters.Config):
-        extra = Extra.ignore  ## Silently ignore any extra parameters for flexibility
+    model_config = ConfigDict(extra="ignore")  ## Silently ignore any extra parameters for flexibility
 
     parallelize: Parallelize
     max_workers: Optional[int] = None  ## None lets the executor use system-appropriate defaults
     max_calls_per_second: float = float("inf")  ## No rate limiting by default
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def _set_params(cls, params: Dict) -> Dict:
         """
         Pre-processes configuration parameters to support alternate parameter names.
@@ -161,7 +161,7 @@ def dispatch_executor(
         config: Dict = dict()
     else:
         assert isinstance(config, ExecutorConfig)
-        config: Dict = config.dict(exclude=True)
+        config: Dict = config.model_dump(exclude=True)
 
     ## Merge passed kwargs with config dict to allow parameter overrides
     config: ExecutorConfig = ExecutorConfig(**{**config, **kwargs})

@@ -4,7 +4,6 @@ from typing import *
 import numpy as np
 import pandas as pd
 from pydantic import conint
-from pydantic.typing import Literal
 
 from bears.constants import DataLayout
 from bears.core.frame.ScalableDataFrame import ScalableDataFrame

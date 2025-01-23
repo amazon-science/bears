@@ -1,7 +1,6 @@
 from typing import *
 
-from pydantic import Extra, conint, root_validator
-from pydantic.typing import Literal
+from pydantic import ConfigDict, conint, model_validator
 from tqdm.auto import tqdm as AutoTqdmProgressBar
 from tqdm.autonotebook import tqdm as NotebookTqdmProgressBar
 from tqdm.std import tqdm as StdTqdmProgressBar
@@ -11,7 +10,7 @@ from ._function import get_fn_spec
 from ._import import _IS_RAY_INSTALLED, optional_dependency
 from ._string import String
 from ._structs import filter_keys, is_dict_like, is_list_or_set_like, remove_keys
-from ._typing import MutableParameters, Parameters
+from ._typing import MutableParameters
 
 TqdmProgressBar = Union[AutoTqdmProgressBar, NotebookTqdmProgressBar, StdTqdmProgressBar]
 
@@ -30,11 +29,12 @@ class ProgressBar(MutableParameters):
     miniters: conint(ge=1) = 1
     _pending_updates: int = 0
 
-    class Config(Parameters.Config):
-        extra = Extra.allow
+    model_config = ConfigDict(extra="allow")
 
-    @root_validator(pre=False)
+    @model_validator(mode="before")
+    @classmethod
     def _set_params(cls, params: Dict) -> Dict:
+        cls.set_param_default_values(params)
         set_param_from_alias(params, param="disable", alias=["disabled"])
         pbar: TqdmProgressBar = cls._create_pbar(**remove_keys(params, ["pbar", "color"]))
         pbar.color = params["color"]

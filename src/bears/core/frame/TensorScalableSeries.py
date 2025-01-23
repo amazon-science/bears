@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from typing import *
 
 import pandas as pd
-from pydantic.typing import Literal
 
 from bears.core.frame.ScalableSeries import SS_DEFAULT_NAME, ScalableSeries
 from bears.util import get_default, is_function, wrap_fn_output

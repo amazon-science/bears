@@ -4,7 +4,6 @@ from typing import *
 
 import numpy as np
 import pandas as pd
-from pydantic.typing import Literal
 
 from bears.constants import DataLayout
 from bears.core.frame import RAW_DATA_MEMBER, ScalableDataFrame

@@ -2,7 +2,6 @@ import io
 from abc import ABC, abstractmethod
 from typing import *
 
-from pydantic.typing import Literal
 
 from bears.constants import FileContents, MLType, Storage
 from bears.asset import Image

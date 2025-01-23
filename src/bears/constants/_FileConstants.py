@@ -6,7 +6,7 @@ UNKNOWN_LABEL_FILL: str = "__UNKNOWN__LABEL__"
 
 
 class FileFormat(AutoEnum):
-    ## Config:
+    ## Configs:
     YAML = auto()
     JSON = auto()
     ## Dataframe:

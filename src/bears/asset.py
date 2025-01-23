@@ -2,8 +2,7 @@ from abc import ABC
 from typing import *
 
 import numpy as np
-from pydantic import conint, root_validator
-from pydantic.typing import Literal
+from pydantic import conint, model_validator
 
 from bears.constants import (
     AVAILABLE_TENSOR_TYPES,
@@ -24,7 +23,8 @@ class Asset(Parameters, Registry, ABC):
     data: Any
     layout: DataLayout
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def validate_params(cls, params: Dict) -> Dict:
         params["layout"]: DataLayout = cls.detect_layout(params["data"])
         return params
@@ -119,7 +119,7 @@ class Image(Asset):
         return Image(
             data=img,
             channels="first",
-            **self.dict(exclude={"data", "channels"}),
+            **self.model_dump(exclude={"data", "channels"}),
         )
 
     def to_channels_last(self) -> Asset:
@@ -135,7 +135,7 @@ class Image(Asset):
         return Image(
             data=img,
             channels="last",
-            **self.dict(exclude={"data", "channels"}),
+            **self.model_dump(exclude={"data", "channels"}),
         )
 
 
