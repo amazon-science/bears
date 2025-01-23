@@ -1,13 +1,12 @@
-## My Project
+# `bears`
 
-TODO: Fill this README out!
+Run your Machine Learning and Deep Learning workloads at any scale; it delivers lightning-fast data-processing, whether you need to run a single row or 100M+ rows. 
 
-Be sure to:
+`bears` works with your existing data tools while optimizing data-layouts between Pandas, Dask, Torch, Python dicts for maximum performance. Drop-in compatibility with the Pandas API means you can use `bears` today and make zero code changes.
 
-* Change the title in this README
-* Edit your repository description on GitHub
+![bear-in-the-night-sky](img/bear-in-the-night-sky.png)
 
-## Security
+## Help build `bears`!
 
 See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
 
