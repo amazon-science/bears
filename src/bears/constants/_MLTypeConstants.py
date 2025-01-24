@@ -1,4 +1,4 @@
-from typing import *
+from typing import Dict, Set, Union
 
 from autoenum import AutoEnum, auto
 
@@ -45,7 +45,7 @@ class MLType(AutoEnum):
 
     ## Predicted probability score(s):
     PROBABILITY_SCORE = auto()
-    PROBABILITY_SCORE_COMMA_SEPERATED_OR_LIST = auto()
+    PROBABILITY_SCORE_COMMA_SEPARATED_OR_LIST = auto()
     PREDICTED_CORRECT = auto()
     PREDICTION_IS_CONFIDENT = auto()
     ## Each element stores a list [predicted_label, predicted_score, is_confident]:

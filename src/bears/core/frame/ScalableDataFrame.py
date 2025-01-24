@@ -6,7 +6,21 @@ import warnings
 from abc import ABC, abstractmethod
 from collections import deque
 from concurrent.futures._base import Future
-from typing import *
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Deque,
+    Dict,
+    Generator,
+    List,
+    Literal,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
+)
 
 import numpy as np
 import pandas as pd
@@ -114,7 +128,9 @@ class ScalableDataFrame(Registry, ABC):
     def of(
         cls,
         data: ScalableOrRaw,
+        *,
         layout: Optional[DataLayout] = None,
+        return_ss: bool = False,
         **kwargs,
     ) -> ScalableDataFrame:
         """
@@ -138,6 +154,8 @@ class ScalableDataFrame(Registry, ABC):
                     raise NotImplementedError(f"Cannot infer layout of data with type: {type(data)}.")
                 data: ScalableDataFrame = ScalableDataFrame.get_subclass(detected_layout)(data=data)
         if isinstance(data, ScalableSeries):
+            if return_ss:
+                return ScalableSeries.of(data, layout=layout, **kwargs)
             data: ScalableDataFrame = data.to_frame()
         assert isinstance(data, ScalableDataFrame)
         if layout is None:
@@ -2023,7 +2041,7 @@ class CompressedScalableDataFrame(Parameters):
     @model_validator(mode="before")
     @classmethod
     def _set_params(cls, params: Dict) -> Dict:
-        cls.set_param_default_values(params)
+        cls.set_default_param_values(params)
         if params["base64_encoding"] is False and not isinstance(params["payload"], bytes):
             raise ValueError(
                 f"Must pass a bytes `payload` when passing `base64_encoding=False`; "

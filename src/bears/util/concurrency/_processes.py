@@ -8,7 +8,13 @@ import warnings
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures._base import Executor, Future
 from concurrent.futures.process import BrokenProcessPool
-from typing import *
+from typing import (
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Union,
+)
 
 import cloudpickle
 

@@ -1,13 +1,13 @@
 import io
 import pickle
-from typing import *
+from typing import Any, NoReturn, Optional
 
 from pydantic import constr
 
 from bears.constants import FileContents, FileFormat
-from bears.writer.Writer import Writer
 from bears.util import FileSystemUtil
 from bears.util.aws import S3Util
+from bears.writer.Writer import Writer
 
 
 class PickleWriter(Writer):

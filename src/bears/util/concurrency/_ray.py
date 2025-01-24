@@ -6,7 +6,15 @@ from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures._base import Executor
 from contextlib import contextmanager
 from math import inf
-from typing import *
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Union,
+)
 
 from pydantic import ConfigDict, confloat, conint
 

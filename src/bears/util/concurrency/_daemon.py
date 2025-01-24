@@ -1,8 +1,13 @@
 import logging
 import time
 import traceback
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-from typing import *
+from typing import (
+    Dict,
+    List,
+    Optional,
+)
 
 
 def daemon(wait: float, exit_on_error: bool = False, sentinel: Optional[List] = None, **kwargs):
@@ -49,7 +54,7 @@ def daemon(wait: float, exit_on_error: bool = False, sentinel: Optional[List] = 
         ## if you write two decorated functions `def say_hi` and `def say_bye`, they each gets a separate
         ## executor. The executor for `say_hi` will call `say_hi` repeatedly, and the executor for `say_bye` will call
         ## `say_bye` repeatedly; they will not interact.
-        executor = RestrictedConcurrencyThreadPoolExecutor(max_workers=1)
+        executor = ThreadPoolExecutor(max_workers=1)
 
         def run_function_forever(sentinel):
             while sentinel is None or len(sentinel) > 0:

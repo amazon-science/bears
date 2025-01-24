@@ -2,7 +2,7 @@ import io
 import math
 from collections import deque
 from concurrent.futures._base import Future
-from typing import *
+from typing import Any, Callable, Deque, Dict, Generator, Iterator, List, Literal, Optional, Set, Tuple, Union
 
 import numpy as np
 import pandas as pd

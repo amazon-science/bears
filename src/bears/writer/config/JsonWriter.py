@@ -1,9 +1,8 @@
 import json
-from typing import *
 
 from bears.constants import FileFormat
-from bears.writer.config.ConfigWriter import ConfigWriter
 from bears.util import StructuredBlob
+from bears.writer.config.ConfigWriter import ConfigWriter
 
 
 class JsonWriter(ConfigWriter):

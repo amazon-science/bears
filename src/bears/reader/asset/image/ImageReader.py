@@ -1,10 +1,9 @@
 import io
 from abc import ABC, abstractmethod
-from typing import *
+from typing import Literal, Optional, Union
 
-
-from bears.constants import FileContents, MLType, Storage
 from bears.asset import Image
+from bears.constants import FileContents, MLType, Storage
 from bears.reader.asset.AssetReader import AssetReader
 
 

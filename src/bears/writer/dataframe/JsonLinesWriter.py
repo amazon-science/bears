@@ -1,5 +1,5 @@
 import io
-from typing import *
+from typing import Callable, NoReturn, Optional, Union
 
 import pandas as pd
 from pydantic import constr

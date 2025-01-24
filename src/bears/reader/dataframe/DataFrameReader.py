@@ -1,15 +1,15 @@
 import io
 from abc import ABC, abstractmethod
-from typing import *
+from typing import Any, Dict, List, Optional, Union
 
 from bears.constants import DataLayout, FileContents, MLTypeSchema, Parallelize, Storage
-from bears.reader.Reader import Reader
 from bears.core.frame.ScalableDataFrame import (
     DaskDataFrame,
     ScalableDataFrame,
     ScalableDataFrameOrRaw,
     ScalableDataFrameRawType,
 )
+from bears.reader.Reader import Reader
 from bears.util import (
     Alias,
     Future,

@@ -1,5 +1,7 @@
 from itertools import product
-from typing import *
+from typing import (
+    List,
+)
 
 from ._import import optional_dependency
 from ._structs import flatten2d

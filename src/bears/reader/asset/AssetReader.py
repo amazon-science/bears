@@ -1,7 +1,8 @@
 import io
 from abc import ABC, abstractmethod
-from typing import *
+from typing import Any, ClassVar, Dict, List, Optional, Union
 
+from bears.asset import Asset
 from bears.constants import (
     SHORTHAND_TO_TENSOR_LAYOUT_MAP,
     FileContents,
@@ -11,7 +12,6 @@ from bears.constants import (
     Storage,
     TensorShortHand,
 )
-from bears.asset import Asset
 from bears.reader.Reader import Reader
 from bears.util import Log, String, accumulate, as_list, dispatch, is_list_like, retry
 

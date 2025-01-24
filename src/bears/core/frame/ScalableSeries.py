@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import *
+from typing import Any, Callable, ClassVar, Dict, Generator, List, Literal, Optional, Set, Tuple, Type, Union
 
 import numpy as np
 import pandas as pd
@@ -839,8 +839,11 @@ class ScalableSeries(Registry, ABC):
         if isinstance(other, self.__class__):
             other = other._data
         out = self._data.dot(other)
-        if isinstance(out, DaskScalar):
-            out = out.compute()
+        with optional_dependency("dask", error="ignore"):
+            from dask.dataframe.core import Scalar as DaskScalar
+
+            if isinstance(out, DaskScalar):
+                out = out.compute()
         return out
 
     """
@@ -1132,17 +1135,6 @@ class ScalableSeries(Registry, ABC):
     @abstractmethod
     def update(self, other):
         pass
-
-    def is_lazy(self) -> bool:
-        return False
-
-    def persist(self, **kwargs) -> ScalableSeries:
-        """For lazily-evaluated Series, stores the task graph up to the current Series."""
-        return self
-
-    def compute(self, **kwargs) -> ScalableSeries:
-        """For lazily-evaluated Series, runs the task graph up to the current Series."""
-        return self
 
 
 ## Ref: https://stackoverflow.com/a/15920132/4900327

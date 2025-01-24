@@ -1,6 +1,6 @@
 import io
 import json
-from typing import *
+from typing import Dict, List, Optional, Union
 
 import boto3
 import pandas as pd
@@ -9,9 +9,9 @@ from pandas import read_json as Pandas_read_json
 from pydantic import constr
 
 from bears.constants import DataLayout, FileFormat, MLTypeSchema, Storage
+from bears.core.frame.ScalableDataFrame import DaskDataFrame, ScalableDataFrame, ScalableDataFrameRawType
 from bears.FileMetadata import FileMetadata
 from bears.reader.dataframe.DataFrameReader import DataFrameReader
-from bears.core.frame.ScalableDataFrame import DaskDataFrame, ScalableDataFrame, ScalableDataFrameRawType
 from bears.util import optional_dependency
 from bears.util.aws.s3 import S3Util
 

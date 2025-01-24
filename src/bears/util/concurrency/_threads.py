@@ -9,7 +9,10 @@ from concurrent.futures._base import Future
 from concurrent.futures.thread import BrokenThreadPool
 from math import inf
 from threading import Lock, Semaphore
-from typing import *
+from typing import (
+    Optional,
+    Type,
+)
 
 
 class ThreadKilledSystemException(BaseException):

@@ -1,4 +1,4 @@
-from typing import *
+from typing import Dict, List, Set, Union
 
 from autoenum import AutoEnum, auto
 

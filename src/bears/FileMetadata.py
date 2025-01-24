@@ -2,7 +2,7 @@ import io
 import os
 import pathlib
 import tempfile
-from typing import *
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import requests
 from pydantic import constr, model_validator

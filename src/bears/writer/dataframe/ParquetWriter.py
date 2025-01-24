@@ -1,5 +1,5 @@
 import io
-from typing import *
+from typing import Any, Callable, Dict, NoReturn, Optional, Union
 
 from pandas.io.parquet import to_parquet as Pandas_to_parquet
 from pydantic import Field

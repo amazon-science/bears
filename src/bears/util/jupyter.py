@@ -4,7 +4,7 @@ import urllib.error
 import urllib.request
 from itertools import chain
 from pathlib import Path, PurePath
-from typing import *
+from typing import Any, Dict, Generator, List, Literal, Optional, Set, Tuple, Union
 
 from bears.util.language import as_list, not_impl, safe_validate_arguments
 

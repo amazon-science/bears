@@ -1,6 +1,6 @@
 import io
 from abc import ABC, abstractmethod
-from typing import *
+from typing import Callable, ClassVar, Dict, List, NoReturn, Optional, Set, Union
 
 from pydantic import conint, constr, model_validator
 

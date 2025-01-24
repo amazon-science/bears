@@ -1,7 +1,7 @@
 import io
 import time
 from abc import ABC, abstractmethod
-from typing import *
+from typing import Any, Callable, ClassVar, Dict, List, NoReturn, Optional, Tuple, Type, Union
 
 from pydantic import ConfigDict, model_validator
 

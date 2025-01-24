@@ -1,5 +1,5 @@
 import io
-from typing import *
+from typing import Dict, List, Optional, Set, Union
 
 import boto3
 import pandas as pd
@@ -7,9 +7,9 @@ from botocore.exceptions import NoCredentialsError
 from pandas import read_parquet as Pandas_read_parquet
 
 from bears.constants import DataLayout, FileFormat, MLTypeSchema, Storage
+from bears.core.frame.ScalableDataFrame import DaskDataFrame, ScalableDataFrame, ScalableDataFrameRawType
 from bears.FileMetadata import FileMetadata
 from bears.reader.dataframe.DataFrameReader import DataFrameReader
-from bears.core.frame.ScalableDataFrame import DaskDataFrame, ScalableDataFrame, ScalableDataFrameRawType
 from bears.util import as_list, optional_dependency
 from bears.util.aws import S3Util
 

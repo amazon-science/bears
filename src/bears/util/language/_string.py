@@ -12,7 +12,7 @@ from ast import literal_eval
 from collections import defaultdict
 from datetime import datetime, timedelta
 from hashlib import sha256
-from typing import *
+from typing import Any, Dict, List, Optional, Set, Tuple, Type, Union
 
 import numpy as np
 import pandas as pd
@@ -441,24 +441,24 @@ class String:
         assert isinstance(expected_type, type)
         if isinstance(val, expected_type):
             return val
-        if expected_type == str:
+        if expected_type is str:
             return str(val)
-        if expected_type == bool and isinstance(val, str):
+        if expected_type is bool and isinstance(val, str):
             val = val.lower().strip().capitalize()  ## literal_eval does not parse "false", only "False".
         out = literal_eval(String.assert_not_empty_and_strip(str(val)))
-        if expected_type == float and isinstance(out, int):
+        if expected_type is float and isinstance(out, int):
             out = float(out)
-        if expected_type == int and isinstance(out, float) and int(out) == out:
+        if expected_type is int and isinstance(out, float) and int(out) == out:
             out = int(out)
-        if expected_type == tuple and isinstance(out, list):
+        if expected_type is tuple and isinstance(out, list):
             out = tuple(out)
-        if expected_type == list and isinstance(out, tuple):
+        if expected_type is list and isinstance(out, tuple):
             out = list(out)
-        if expected_type == set and isinstance(out, (list, tuple)):
+        if expected_type is set and isinstance(out, (list, tuple)):
             out = set(out)
-        if expected_type == bool and out in [0, 1]:
+        if expected_type is bool and out in [0, 1]:
             out = bool(out)
-        if type(out) != expected_type:
+        if type(out) is not expected_type:
             raise ValueError(f"Input value {val} cannot be converted to {str(expected_type)}")
         return out
 

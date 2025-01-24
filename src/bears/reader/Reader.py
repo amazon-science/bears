@@ -2,16 +2,19 @@ import io
 import pathlib
 import time
 from abc import ABC, abstractmethod
-from typing import *
+from typing import Any, Callable, ClassVar, Dict, List, NoReturn, Optional, Tuple, Type, Union
 
 import numpy as np
 from pydantic import ConfigDict, Field, confloat, conint, constr, model_validator
 
 from bears.constants import FILE_FORMAT_TO_FILE_ENDING_MAP, FileContents, FileFormat, MLTypeSchema, Storage
 from bears.FileMetadata import FileMetadata
-from bears.util import Alias, FileSystemUtil, Log, Parameters, Registry, String
-from bears.util.aws import S3Util
-from bears.util.language import (
+from bears.util import (
+    Alias,
+    FileSystemUtil,
+    Log,
+    Parameters,
+    Registry,
     String,
     as_list,
     classproperty,
@@ -20,6 +23,7 @@ from bears.util.language import (
     safe_validate_arguments,
     shuffle_items,
 )
+from bears.util.aws import S3Util
 
 Reader = "Reader"
 

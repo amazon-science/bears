@@ -1,12 +1,12 @@
 import io
-from typing import *
+from typing import Dict, List, Optional, Set, Union
 
 import numpy as np
 
 from bears.constants import DataLayout, FileFormat, MLTypeSchema, Storage
+from bears.core.frame.ScalableDataFrame import DaskDataFrame, ScalableDataFrame, ScalableDataFrameRawType
 from bears.FileMetadata import FileMetadata
 from bears.reader.dataframe.DataFrameReader import DataFrameReader
-from bears.core.frame.ScalableDataFrame import DaskDataFrame, ScalableDataFrame, ScalableDataFrameRawType
 from bears.util import accumulate, as_list, run_concurrent
 
 

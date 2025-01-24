@@ -5,6 +5,7 @@ import atexit
 import inspect
 import threading
 from functools import partial
+from typing import Optional
 
 
 def _asyncio_start_event_loop(loop):
@@ -36,12 +37,36 @@ async def __run_fn_async(fn, *args, run_sync_in_executor: bool = True, **kwargs)
     return result
 
 
+_ASYNCIO_EVENT_LOOP = None
+_ASYNCIO_EVENT_LOOP_THREAD = None
+
+
 ## Function to submit the coroutine to the asyncio event loop
-def run_asyncio(fn, *args, **kwargs):
+def run_asyncio(
+    fn,
+    *args,
+    event_loop: Optional[asyncio.AbstractEventLoop] = None,
+    **kwargs,
+):
+    global _ASYNCIO_EVENT_LOOP
+    global _ASYNCIO_EVENT_LOOP_THREAD
+    if event_loop is None:
+        ## Create a new loop and a thread running this loop
+        if _ASYNCIO_EVENT_LOOP is None:
+            _ASYNCIO_EVENT_LOOP = asyncio.new_event_loop()
+        if _ASYNCIO_EVENT_LOOP_THREAD is None:
+            _ASYNCIO_EVENT_LOOP_THREAD = threading.Thread(
+                target=_asyncio_start_event_loop,
+                args=(_ASYNCIO_EVENT_LOOP,),
+            )
+            _ASYNCIO_EVENT_LOOP_THREAD.start()
+
+        event_loop: asyncio.AbstractEventLoop = _ASYNCIO_EVENT_LOOP
     ## Create a coroutine (i.e. Future), but do not actually start executing it.
     coroutine = __run_fn_async(fn, *args, **kwargs)
-    ## Schedule the coroutine to execute on the event loop (which is running on thread _ASYNCIO_EVENT_LOOP_THREAD).
-    return asyncio.run_coroutine_threadsafe(coroutine, _ASYNCIO_EVENT_LOOP)
+    ## Schedule the coroutine to execute on the event loop
+    ## (which is running on thread _ASYNCIO_EVENT_LOOP_THREAD).
+    return asyncio.run_coroutine_threadsafe(coroutine, event_loop)
 
 
 async def async_http_get(url):
@@ -52,17 +77,17 @@ async def async_http_get(url):
             return await response.read()
 
 
-## Create a new loop and a thread running this loop
-_ASYNCIO_EVENT_LOOP = asyncio.new_event_loop()
-_ASYNCIO_EVENT_LOOP_THREAD = threading.Thread(target=_asyncio_start_event_loop, args=(_ASYNCIO_EVENT_LOOP,))
-_ASYNCIO_EVENT_LOOP_THREAD.start()
-
-
 def _cleanup_event_loop():
-    if _ASYNCIO_EVENT_LOOP.is_running():
-        _ASYNCIO_EVENT_LOOP.call_soon_threadsafe(_ASYNCIO_EVENT_LOOP.stop)
-    _ASYNCIO_EVENT_LOOP_THREAD.join()
-    _ASYNCIO_EVENT_LOOP.close()
+    global _ASYNCIO_EVENT_LOOP
+    global _ASYNCIO_EVENT_LOOP_THREAD
+
+    if _ASYNCIO_EVENT_LOOP is not None and _ASYNCIO_EVENT_LOOP_THREAD is not None:
+        if _ASYNCIO_EVENT_LOOP.is_running():
+            _ASYNCIO_EVENT_LOOP.call_soon_threadsafe(_ASYNCIO_EVENT_LOOP.stop)
+        _ASYNCIO_EVENT_LOOP_THREAD.join()
+        _ASYNCIO_EVENT_LOOP.close()
+        del _ASYNCIO_EVENT_LOOP
+        del _ASYNCIO_EVENT_LOOP_THREAD
 
 
 ## Register the cleanup function to be called upon Python program exit
