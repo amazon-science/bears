@@ -26,7 +26,6 @@ from pydantic import (
     constr,
     create_model,
     model_validator,
-    validate_arguments,
     validate_call,
 )
 
@@ -230,10 +229,20 @@ class Registry(ABC):
 
         fields = {k: (v, None) for k, v in classvars_typing_dict.items()}
 
-        cls._classvars_BaseModel: ClassVar[Type[BaseModel]] = create_model(
-            f"{cls.__name__}_ClassVarsBaseModel", **fields
-        )
-        cls._classvars_BaseModel.model_config = {"extra": "ignore"}
+        try:
+            _classvars_BaseModel: ClassVar[Optional[Type[BaseModel]]] = create_model(
+                f"{cls.__name__}_ClassVarsBaseModel",
+                __config__=Parameters.model_config,
+                **fields,
+            )
+            _classvars_BaseModel.model_config = {"extra": "ignore"}
+            cls._classvars_BaseModel: ClassVar[Optional[Type[BaseModel]]] = _classvars_BaseModel
+        except PydanticSchemaGenerationError as e:
+            raise PydanticSchemaGenerationError(
+                f"Error creating Pydantic v2 model to validate classvars of '{cls.__name__}':\n"
+                f"{String.format_exception_msg(e)}\n"
+                f"Fields used:\n{String.pretty(fields)}"
+            )
 
     @classmethod
     def __validate_classvars_BaseModel(cls):
@@ -291,7 +300,7 @@ class Registry(ABC):
                 cls.__add_to_registry(k, cls)
 
     @classmethod
-    @validate_arguments
+    @validate_call
     def __add_to_registry(cls, key: Any, subclass: Type):
         subclass_name: str = subclass.__name__
         if isinstance(key, (str, AutoEnum)):
