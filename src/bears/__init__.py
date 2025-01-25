@@ -10,6 +10,7 @@ from bears.core.frame.ScalableDataFrame import ScalableDataFrame, ScalableOrRaw,
 from bears.core.frame.ScalableSeries import ScalableSeries, ScalableSeriesRawType,ScalableSeriesOrRaw
 from bears.reader import Reader 
 from bears.writer import Writer
+from bears.processor import DataProcessor, DataPipeline
 
 to_sdf = ScalableDataFrame.of
 to_ss = ScalableSeries.of
