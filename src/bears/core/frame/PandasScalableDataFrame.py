@@ -1,4 +1,4 @@
-from typing import *
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 import pandas as pd
 from pandas.core.indexes.multi import MultiIndex as PandasMultiIndex

@@ -5,7 +5,7 @@ import os
 import pickle
 import random
 import time
-from typing import *
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 from urllib.parse import ParseResult, urlparse
 
 import boto3

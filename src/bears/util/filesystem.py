@@ -7,7 +7,7 @@ import pathlib
 import pickle
 import shutil
 import time
-from typing import *
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import yaml
 

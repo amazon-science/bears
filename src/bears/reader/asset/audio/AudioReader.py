@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import *
+from typing import Any
 
 import numpy as np
 

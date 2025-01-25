@@ -3,7 +3,7 @@ import os
 import sys
 import warnings
 from contextlib import contextmanager
-from typing import *
+from typing import Any, Dict, Literal, Optional, Union
 
 import pandas as pd
 from pydantic import FilePath, conint, constr

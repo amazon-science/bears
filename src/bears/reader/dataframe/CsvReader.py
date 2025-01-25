@@ -1,16 +1,16 @@
 import csv
 import io
-from typing import *
+from typing import Callable, Dict, List, Optional, Set, Union
 
 import boto3
 import pandas as pd
 from botocore.exceptions import NoCredentialsError
 from pandas import read_csv as Pandas_read_csv
-from pydantic import constr, validator
+from pydantic import constr, model_validator
 
 from bears.constants import QUOTING_MAP, DataLayout, FileFormat, MLTypeSchema, Storage
-from bears.reader.dataframe.DataFrameReader import DataFrameReader
 from bears.core.frame.ScalableDataFrame import DaskDataFrame, ScalableDataFrame, ScalableDataFrameRawType
+from bears.reader.dataframe.DataFrameReader import DataFrameReader
 from bears.util import String
 from bears.util.aws import S3Util
 
@@ -25,13 +25,15 @@ class CsvReader(DataFrameReader):
         keep_default_na: Optional[bool] = True
         na_values: Optional[List[str]] = []
 
-        @validator("quoting")
-        def validate_quoting(cls, quoting):
-            if quoting is None:
-                return None
-            if quoting not in QUOTING_MAP:
+        @model_validator(mode="before")
+        @classmethod
+        def set_params(cls, params: Dict) -> Dict:
+            cls.set_default_param_values(params)
+            quoting = params.get("quoting")
+            if quoting is not None and quoting not in QUOTING_MAP:
                 raise ValueError(f'`quoting` must be in {list(QUOTING_MAP.keys())}; found "{quoting}"')
-            return QUOTING_MAP[quoting]
+            params["quoting"] = QUOTING_MAP[quoting]
+            return params
 
     def _read_raw_sdf(
         self,

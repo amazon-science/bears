@@ -1,10 +1,10 @@
 import io
-from typing import *
+from typing import Callable, Dict, List, NoReturn, Optional, Union
 
 import pandas as pd
-from pydantic import constr, validator
+from pydantic import constr, model_validator
 
-from bears.constants import DataLayout, FileFormat, Storage
+from bears.constants import QUOTING_MAP, DataLayout, FileFormat, Storage
 from bears.core.frame.ScalableDataFrame import ScalableDataFrame
 from bears.util import String
 from bears.writer.dataframe.DataFrameWriter import DataFrameWriter
@@ -21,13 +21,15 @@ class CsvWriter(DataFrameWriter):
         quoting: Optional[str] = None
         index: Optional[int] = None
 
-        @validator("quoting")
-        def validate_quoting(cls, quoting):
-            if quoting is None:
-                return None
-            if quoting not in cls.QUOTING_MAP:
-                raise ValueError(f'`quoting` must be in {list(cls.QUOTING_MAP.keys())}; found "{quoting}"')
-            return cls.QUOTING_MAP[quoting]
+        @model_validator(mode="before")
+        @classmethod
+        def set_params(cls, params: Dict) -> Dict:
+            cls.set_default_param_values(params)
+            quoting = params.get("quoting")
+            if quoting is not None and quoting not in QUOTING_MAP:
+                raise ValueError(f'`quoting` must be in {list(QUOTING_MAP.keys())}; found "{quoting}"')
+            params["quoting"] = QUOTING_MAP[quoting]
+            return params
 
     def _write_sdf(
         self,

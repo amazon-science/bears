@@ -2,7 +2,20 @@ import functools
 import json
 import typing
 from abc import ABC
-from typing import *
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Dict,
+    Generic,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import numpy as np
 from autoenum import AutoEnum
@@ -438,7 +451,7 @@ class Parameters(BaseModel, ABC):
         return {param: prop.get("default") for param, prop in properties.items() if "default" in prop}
 
     @classmethod
-    def set_param_default_values(cls, params: Dict):
+    def set_default_param_values(cls, params: Dict):
         ## Apply default values for fields not present in the input
         for field_name, field in cls.model_fields.items():
             if field_name not in params:
@@ -512,7 +525,11 @@ class UserEnteredParameters(Parameters):
 
 class MutableParameters(Parameters):
     model_config = ConfigDict(
-        frozen=False,  ## replaces allow_mutation=True
+        ## replaces allow_mutation=True from Pydantic v1:
+        frozen=False,
+        ## type-checking when setting parameters.
+        ## Ref: https://docs.pydantic.dev/latest/api/config/#pydantic.config.ConfigDict.validate_assignment
+        validate_assignment=True,
     )
 
 
@@ -523,35 +540,40 @@ class MutableUserEnteredParameters(UserEnteredParameters, MutableParameters):
 class MappedParameters(Parameters, ABC):
     """
     Allows creation of a Parameters instance by mapping from a dict.
-    From this dict, the 'name' key will be used to look up the cls._mapping dictionary, and retrieve the corresponding
+    From this dict, the 'name' key will be used to look up the cls.mapping_dict dictionary, and retrieve the corresponding
     class. This class will be instantiated using the other values in the dict.
     """
 
-    _mapping: ClassVar[Dict[Union[Tuple[str, ...], str], Any]]
+    mapping_dict: ClassVar[Dict[Union[Tuple[str, ...], str], Any]]
 
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(
+        extra="allow",
+    )
 
     name: constr(min_length=1)
     args: Tuple = ()
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
-        if not isinstance(cls._mapping, dict) or len(cls._mapping) == 0:
-            raise ValueError(f"Lookup must be a non-empty dict; found: {cls._mapping}")
-        for key, val in list(cls._mapping.items()):
+        if not isinstance(cls.mapping_dict, dict) or len(cls.mapping_dict) == 0:
+            raise ValueError(
+                f"Lookup must be a non-empty dict; found: "
+                f"type {type(cls.mapping_dict)} with value: {cls.mapping_dict}"
+            )
+        for key, val in list(cls.mapping_dict.items()):
             if is_list_like(key):
                 for k in key:
-                    cls._mapping[String.str_normalize(k)] = val
+                    cls.mapping_dict[String.str_normalize(k)] = val
             else:
-                cls._mapping[String.str_normalize(key)] = val
+                cls.mapping_dict[String.str_normalize(key)] = val
 
     @model_validator(mode="before")
     @classmethod
     def check_mapped_params(cls, values: Dict) -> Dict:
-        if String.str_normalize(values["name"]) not in cls._mapping:
+        if String.str_normalize(values["name"]) not in cls.mapping_dict:
             raise ValueError(
                 f'''`name`="{values["name"]}" was not found in the lookup. '''
-                f"""Valid values for `name`: {set(cls._mapping.keys())}"""
+                f"""Valid values for `name`: {set(cls.mapping_dict.keys())}"""
             )
         return values
 
@@ -574,7 +596,7 @@ class MappedParameters(Parameters, ABC):
         return cls(args=args, **kwargs)
 
     def mapped_callable(self) -> Any:
-        return self._mapping[String.str_normalize(self.name)]
+        return self.mapping_dict[String.str_normalize(self.name)]
 
     @property
     def kwargs(self) -> Dict:

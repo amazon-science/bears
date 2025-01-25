@@ -1,11 +1,11 @@
 import io
-from typing import *
+from typing import Literal, Optional, Union
 
 import numpy as np
 from pydantic import constr
 
-from bears.constants import FileContents, FileFormat, Storage
 from bears.asset import Image
+from bears.constants import FileContents, FileFormat, Storage
 from bears.reader.asset.image.ImageReader import ImageReader
 from bears.util import optional_dependency
 from bears.util.aws import S3Util

@@ -1,4 +1,13 @@
-from typing import *
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+)
 
 from ._utils import Utility, get_default
 

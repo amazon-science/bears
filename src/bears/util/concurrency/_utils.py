@@ -1,7 +1,16 @@
 import time
 from concurrent.futures import wait as wait_future
 from concurrent.futures._base import Future
-from typing import *
+from typing import (
+    Any,
+    Dict,
+    List,
+    NoReturn,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+)
 
 import numpy as np
 from autoenum import AutoEnum, auto

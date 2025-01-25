@@ -1,13 +1,13 @@
 import io
 from abc import ABC, abstractmethod
-from typing import *
+from typing import Any, NoReturn, Optional
 
-from pydantic import *
+from pydantic import constr
 
 from bears.constants import FileContents, MLType
-from bears.writer.Writer import Writer
 from bears.util import FileSystemUtil, String
 from bears.util.aws import S3Util
+from bears.writer.Writer import Writer
 
 
 class ConfigWriter(Writer, ABC):

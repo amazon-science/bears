@@ -1,6 +1,12 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import *
+from typing import (
+    Dict,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import requests
 from pydantic import BaseModel, constr, model_validator

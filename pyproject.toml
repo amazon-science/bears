@@ -78,8 +78,7 @@ ignore = [
     ## Ignored because it makes the code too verbose:
     "E731", # lambda-assignment: https://docs.astral.sh/ruff/rules/lambda-assignment/
     "E741", # ambiguous-variable-name: https://docs.astral.sh/ruff/rules/ambiguous-variable-name/
-    
-    ## Ignored because of bad interaction with `from typing import *`
-    "F405", # undefined-local-with-import-star-usage: https://docs.astral.sh/ruff/rules/undefined-local-with-import-star-usage/
-    "F403", # undefined-local-with-import-star: https://docs.astral.sh/ruff/rules/undefined-local-with-import-star/
+
+    ## Ignored because it causes no harm (and is needed sometimes):
+    "F841",     # unused-variable: https://docs.astral.sh/ruff/rules/unused-variable/
 ]

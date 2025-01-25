@@ -1,6 +1,6 @@
 import types
 from contextlib import contextmanager
-from typing import *
+from typing import List, Literal, Optional, Set, Tuple, Union
 
 
 @contextmanager

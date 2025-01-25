@@ -1,6 +1,6 @@
 import io
 from abc import ABC, abstractmethod
-from typing import *
+from typing import List, Optional, Union
 
 import requests
 from requests import Response
@@ -10,8 +10,6 @@ from bears.reader.Reader import Reader
 from bears.util import FileSystemUtil, String, StructuredBlob, safe_validate_arguments
 from bears.util.aws import S3Util
 from bears.util.language import is_list_like, optional_dependency
-
-StructuredBlob = Union[List, Dict, List[Dict]]
 
 
 class ConfigReader(Reader, ABC):

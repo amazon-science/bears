@@ -1,4 +1,15 @@
-from typing import *
+from typing import (
+    Dict,
+    Generator,
+    ItemsView,
+    Iterator,
+    List,
+    Literal,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+)
 
 from pydantic import ConfigDict, conint, model_validator
 from tqdm.auto import tqdm as AutoTqdmProgressBar
@@ -34,7 +45,7 @@ class ProgressBar(MutableParameters):
     @model_validator(mode="before")
     @classmethod
     def _set_params(cls, params: Dict) -> Dict:
-        cls.set_param_default_values(params)
+        cls.set_default_param_values(params)
         set_param_from_alias(params, param="disable", alias=["disabled"])
         pbar: TqdmProgressBar = cls._create_pbar(**remove_keys(params, ["pbar", "color"]))
         pbar.color = params["color"]

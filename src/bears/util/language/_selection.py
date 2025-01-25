@@ -1,6 +1,7 @@
 import math
 import random
-from typing import *
+from typing import Any, Dict, Generator, List, Literal, Optional, Set, Tuple, Type, Union
+from collections import Counter
 
 import numpy as np
 import pandas as pd
@@ -39,7 +40,7 @@ def resolve_sample_size(sample_size: Optional[SampleSizeType], length: int) -> c
 
 
 def infer_np_dtype(
-    data: Union[List, np.ndarray, pd.Series, "torch.Tensor"],
+    data: Any,
     sample_size: SampleSizeType = True,
     str_to_object: bool = True,
     return_str_for_collection: bool = False,

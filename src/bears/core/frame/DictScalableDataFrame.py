@@ -1,5 +1,5 @@
 import copy
-from typing import *
+from typing import Any, Callable, Dict, List, Literal, Optional, Set, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -232,7 +232,7 @@ class DictScalableDataFrame(ScalableDataFrame):
                 col_lens: Dict[Any, int] = sdf.column_lengths(check=True)
                 df_len: int = next(iter(col_lens.values()))
                 if col in col_lens:
-                    data_col: Union[NumpyArrayScalableSeries, torch.Tensor] = sdf._data[col]
+                    data_col = sdf._data[col]
                     if isinstance(data_col, NumpyArrayScalableSeries):
                         data_col: np.ndarray = data_col.numpy()
                     concat_dict[col].append(data_col)

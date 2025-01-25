@@ -1,15 +1,15 @@
 import copy
-from typing import *
+from typing import Any, Callable, Dict, List, Literal, Optional, Set, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from bears.constants import DataLayout, Parallelize
-from bears.util import String, any_are_not_none, as_list, safe_validate_arguments
 from pydantic import conint
 
+from bears.constants import DataLayout, Parallelize
 from bears.core.frame.DatumScalableSeries import DatumScalableSeries
 from bears.core.frame.ScalableDataFrame import ScalableDataFrame, ScalableDataFrameOrRaw
 from bears.core.frame.ScalableSeries import ScalableSeries
+from bears.util import String, any_are_not_none, as_list, safe_validate_arguments
 
 RecordScalableDataFrame = "RecordScalableDataFrame"
 

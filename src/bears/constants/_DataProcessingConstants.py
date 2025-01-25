@@ -1,8 +1,9 @@
 import csv
-from typing import *
+from typing import Dict, List, Literal, Set, Type
 
 import numpy as np
 from autoenum import AutoEnum, alias, auto
+
 from bears.util.language._import import optional_dependency
 
 ## https://en.wikipedia.org/wiki/42_(number)#The_Hitchhiker's_Guide_to_the_Galaxy:

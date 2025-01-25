@@ -1,7 +1,14 @@
 import math
 import time
 from datetime import datetime, timedelta
-from typing import *
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Optional,
+    Tuple,
+    Union,
+)
 
 from pydantic import confloat, model_validator
 

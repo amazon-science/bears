@@ -1,6 +1,6 @@
 import io
 import pickle
-from typing import *
+from typing import List, Optional, Union
 
 from bears.constants import FileContents, FileFormat, MLTypeSchema
 from bears.reader.Reader import Reader

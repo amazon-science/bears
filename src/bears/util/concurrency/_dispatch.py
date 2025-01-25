@@ -1,11 +1,20 @@
 import time
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from concurrent.futures._base import Executor
-from typing import *
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+)
 
 import numpy as np
 import pandas as pd
-from pydantic import model_validator, ConfigDict
+from pydantic import ConfigDict, model_validator
 
 from bears.constants import Parallelize
 from bears.util.language import (

@@ -1,5 +1,5 @@
 import io
-from typing import *
+from typing import Any, Callable, Dict, NoReturn, Optional, Union
 
 from numpy import savez as Pandas_to_npz
 from pydantic import Field

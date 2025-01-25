@@ -1,5 +1,5 @@
 import os
-from typing import *
+from typing import ClassVar, List, Optional
 
 from bears.util.language import String, Utility, get_default
 

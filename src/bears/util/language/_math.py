@@ -1,4 +1,12 @@
-from typing import *
+from typing import (
+    Generator,
+    Iterable,
+    Iterator,
+    Literal,
+    Optional,
+    Tuple,
+    Union,
+)
 
 import numpy as np
 import pandas as pd

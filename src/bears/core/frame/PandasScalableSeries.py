@@ -1,4 +1,4 @@
-from typing import *
+from typing import Any, List, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -7,8 +7,6 @@ from bears.constants import DataLayout
 from bears.core.frame.ScalableDataFrame import ScalableDataFrame
 from bears.core.frame.ScalableSeries import SS_DEFAULT_NAME, ScalableSeries
 from bears.util import get_default, is_function, wrap_fn_output
-
-PandasScalableSeries = "PandasScalableSeries"
 
 
 class PandasScalableSeries(ScalableSeries):

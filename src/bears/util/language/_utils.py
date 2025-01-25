@@ -1,4 +1,4 @@
-from typing import *
+from typing import Any, Literal, Optional
 
 import numpy as np
 import pandas as pd

@@ -5,7 +5,7 @@ import re
 import sys
 import types
 from ast import literal_eval
-from typing import *
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
 from pydantic import BaseModel, ConfigDict, model_validator
 

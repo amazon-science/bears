@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import *
+from typing import Any, Callable, ClassVar, Dict, Literal, Optional, Union
 
 import numpy as np
 from pydantic import conint, model_validator
@@ -112,6 +112,8 @@ class Image(Asset):
         if self.layout is DataLayout.NUMPY:
             moveaxis: Callable = np.moveaxis
         elif self.layout is DataLayout.TORCH:
+            import torch
+
             moveaxis: Callable = torch.moveaxis
         else:
             raise NotImplementedError()
@@ -128,6 +130,8 @@ class Image(Asset):
         if self.layout is DataLayout.NUMPY:
             moveaxis: Callable = np.moveaxis
         elif self.layout is DataLayout.TORCH:
+            import torch
+
             moveaxis: Callable = torch.moveaxis
         else:
             raise NotImplementedError()

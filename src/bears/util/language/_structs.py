@@ -3,7 +3,21 @@ import re
 from ast import literal_eval
 from collections import defaultdict
 from contextlib import contextmanager
-from typing import *
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    ItemsView,
+    KeysView,
+    List,
+    Literal,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
+    ValuesView,
+)
 
 import numpy as np
 import pandas as pd
@@ -529,8 +543,8 @@ def iter_dict(d, depth: int = 1, *, _cur_depth: int = 0):
     for k, v in d.items():
         if isinstance(v, dict) and _cur_depth < depth - 1:
             # If the value is a dictionary, recurse
-            for subkeys in iter_dict(v, _cur_depth=_cur_depth + 1, depth=depth):
-                yield (k,) + subkeys
+            for sub_keys in iter_dict(v, _cur_depth=_cur_depth + 1, depth=depth):
+                yield (k,) + sub_keys
         else:
             # If the value is not a dictionary, yield the key-value pair
             yield (k, v)
