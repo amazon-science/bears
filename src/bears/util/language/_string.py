@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple, Type, Union
 
 import numpy as np
 import pandas as pd
-from pydantic import confloat, conint, validate_arguments
+from pydantic import confloat, conint, validate_call
 
 from ._function import is_function
 from ._import import optional_dependency
@@ -769,7 +769,7 @@ class String:
         return val
 
     @classmethod
-    @validate_arguments
+    @validate_call
     def random(
         cls,
         shape: Tuple = (1,),
