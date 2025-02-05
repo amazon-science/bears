@@ -27,6 +27,7 @@ from pydantic import (
     create_model,
     model_validator,
     validate_call,
+    ValidationError,
 )
 
 from ._function import call_str_to_params, get_fn_spec, is_function, params_to_call_str
@@ -440,10 +441,22 @@ class Parameters(BaseModel, ABC):
     def __init__(self, *args, **kwargs):
         try:
             super().__init__(*args, **kwargs)
+        except ValidationError as e:
+            errors_str = ""
+            for error_i, error in enumerate(e.errors()):
+                assert isinstance(error, dict)
+                error_msg: str = String.prefix_each_line(error.get("msg", ""), prefix="    ")
+                errors_str += f"\n[Error#{error_i+1}] ValidationError in {error['loc']}: {error_msg}"
+                errors_str += f"\n[Error#{error_i+1}] Input: {String.pretty(error['input'])}"
+            raise ValueError(
+                f"Cannot create Pydantic instance of type '{self.class_name}', "
+                f"encountered following validation errors: {errors_str}"
+            )
+            
         except Exception as e:
             raise ValueError(
-                f'Cannot create Pydantic instance of type "{self.class_name}".'
-                f"\nEncountered exception: {String.format_exception_msg(e)}"
+                f"Cannot create Pydantic instance of type '{self.class_name}', "
+                f"encountered exception: {String.format_exception_msg(e)}"
             )
 
     @classproperty

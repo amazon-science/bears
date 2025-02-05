@@ -307,7 +307,7 @@ class RayInitConfig(UserEnteredParameters):
     address: str = "auto"
     temp_dir: Optional[str] = None
     include_dashboard: bool = False
-    runtime_env: RayRuntimeEnv = {}
+    runtime_env: RayRuntimeEnv = RayRuntimeEnv()
 
 
 RayActorComposite = "RayActorComposite"

@@ -989,6 +989,14 @@ class String:
         return out
 
     @classmethod
+    def prefix_each_line(cls, text: str, prefix: str) -> str:
+        return re.sub("^", prefix, text, flags=re.MULTILINE)
+
+    @classmethod
+    def suffix_each_line(cls, text: str, prefix: str) -> str:
+        return re.sub("$", prefix, text, flags=re.MULTILINE)
+
+    @classmethod
     def is_stream(cls, obj) -> bool:
         return isinstance(obj, io.IOBase) and hasattr(obj, "read")
 
