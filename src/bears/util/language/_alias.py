@@ -152,13 +152,16 @@ class Alias(Utility, metaclass=_AliasMeta):
             params,
             param=param,
             alias=[
+                "num_workers",
+                "max_workers",
                 "num_processes",
                 "n_processes",
                 "n_process",
                 "n_proc",
+                "nproc",
                 "n_jobs",
+                "njobs",
                 "map_num_workers",
-                "num_workers",
             ],
             **kwargs,
         )
@@ -185,6 +188,18 @@ class Alias(Utility, metaclass=_AliasMeta):
     def set_metrics(cls, params: Dict, param: str = "metrics", **kwargs):
         set_param_from_alias(
             params, param=param, alias=["metric", "metrics_list", "metric_list", "metrics"], **kwargs
+        )
+
+    @classmethod
+    def set_cpu(cls, params: Dict, param: str = "cpu", **kwargs):
+        set_param_from_alias(
+            params, param=param, alias=["cpus", "num_cpu", "num_cpus"], **kwargs
+        )
+
+    @classmethod
+    def set_gpu(cls, params: Dict, param: str = "gpu", **kwargs):
+        set_param_from_alias(
+            params, param=param, alias=["gpus", "num_gpu", "num_gpus"], **kwargs
         )
 
     @classmethod

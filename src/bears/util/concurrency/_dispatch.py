@@ -25,7 +25,6 @@ from bears.util.language import (
     get_default,
     is_dict_like,
     is_list_or_set_like,
-    set_param_from_alias,
     type_str,
 )
 
@@ -105,9 +104,9 @@ class ExecutorConfig(Parameters):
     def _set_params(cls, params: Dict) -> Dict:
         """
         Pre-processes configuration parameters to support alternate parameter names.
-        Allows 'num_workers' as an alias for 'max_workers' for compatibility.
+        Set various aliases of 'max_workers' for compatibility.
         """
-        set_param_from_alias(params, param="max_workers", alias=["num_workers"], default=None)
+        Alias.set_num_workers(params, param="max_workers")
         return params
 
 

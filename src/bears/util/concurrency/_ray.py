@@ -16,7 +16,7 @@ from typing import (
     Union,
 )
 
-from pydantic import ConfigDict, confloat, conint
+from pydantic import ConfigDict, confloat, conint, model_validator
 
 from bears.util.language import (
     Alias,
@@ -235,14 +235,13 @@ def run_parallel_ray(
     fn,
     *args,
     scheduling_strategy: str = "SPREAD",
-    num_cpus: int = 1,
-    num_gpus: int = 0,
     max_retries: int = 0,
     retry_exceptions: Union[List, bool] = True,
     executor: Optional[RayPoolExecutor] = None,
     **kwargs,
 ):
     _check_is_ray_installed()
+    resources: RayResources = RayResources(**kwargs)
     # print(f'Running {fn_str(fn)} using {Parallelize.ray} with num_cpus={num_cpus}, num_gpus={num_gpus}')
     if executor is not None:
         assert isinstance(executor, RayPoolExecutor)
@@ -250,8 +249,8 @@ def run_parallel_ray(
             fn,
             *args,
             scheduling_strategy=scheduling_strategy,
-            num_cpus=num_cpus,
-            num_gpus=num_gpus,
+            num_cpus=resources.cpu,
+            num_gpus=resources.gpu,
             max_retries=max_retries,
             retry_exceptions=retry_exceptions,
             **kwargs,
@@ -259,8 +258,8 @@ def run_parallel_ray(
     else:
         return _run_parallel_ray_executor.options(
             scheduling_strategy=scheduling_strategy,
-            num_cpus=num_cpus,
-            num_gpus=num_gpus,
+            num_cpus=resources.cpu,
+            num_gpus=resources.gpu,
             max_retries=max_retries,
             retry_exceptions=retry_exceptions,
         ).remote(fn, *args, **kwargs)
@@ -308,6 +307,31 @@ class RayInitConfig(UserEnteredParameters):
     temp_dir: Optional[str] = None
     include_dashboard: bool = False
     runtime_env: RayRuntimeEnv = RayRuntimeEnv()
+
+class RayResources(UserEnteredParameters):
+    model_config = ConfigDict(
+        extra="allow"
+    )
+    
+    cpu: Union[conint(ge=0), confloat(ge=0.0, lt=1.0)] = 1
+    gpu: Union[conint(ge=0), confloat(ge=0.0, lt=1.0)] = 0
+
+    @model_validator(mode="before")
+    @classmethod
+    def _validate_params(cls, params: dict):
+        Alias.set_cpu(params)
+        Alias.set_gpu(params)
+
+        for resource_name, resource_requirement in params.items():
+            if resource_requirement > 1.0 and round(resource_requirement) != resource_requirement:
+                raise ValueError(
+                    f"When specifying `resources_per_model`, fractional resource-requirements are allowed "
+                    f"only when specifying a value <1.0; found fractional resource-requirement "
+                    f'"{resource_name}"={resource_requirement}. To fix this error, set an integer value for '
+                    f'"{resource_name}" in `resources_per_model`.'
+                )
+
+        return params
 
 
 RayActorComposite = "RayActorComposite"

@@ -445,7 +445,7 @@ class Parameters(BaseModel, ABC):
             errors_str = ""
             for error_i, error in enumerate(e.errors()):
                 assert isinstance(error, dict)
-                error_msg: str = String.prefix_each_line(error.get("msg", ""), prefix="    ")
+                error_msg: str = String.prefix_each_line(error.get("msg", ""), prefix="    ").strip()
                 errors_str += f"\n[Error#{error_i+1}] ValidationError in {error['loc']}: {error_msg}"
                 errors_str += f"\n[Error#{error_i+1}] Input: {String.pretty(error['input'])}"
             raise ValueError(
