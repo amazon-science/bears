@@ -902,7 +902,7 @@ with optional_dependency("torch"):
     import torch
 
     NUMPY_TO_TORCH_DTYPE_MAP = {
-        np.bool_: torch.bool,
+        np.bool: torch.bool,
         np.uint8: torch.uint8,
         np.int8: torch.int8,
         np.int16: torch.int16,

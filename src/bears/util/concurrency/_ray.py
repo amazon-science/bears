@@ -308,11 +308,10 @@ class RayInitConfig(UserEnteredParameters):
     include_dashboard: bool = False
     runtime_env: RayRuntimeEnv = RayRuntimeEnv()
 
+
 class RayResources(UserEnteredParameters):
-    model_config = ConfigDict(
-        extra="allow"
-    )
-    
+    model_config = ConfigDict(extra="allow")
+
     cpu: Union[conint(ge=0), confloat(ge=0.0, lt=1.0)] = 1
     gpu: Union[conint(ge=0), confloat(ge=0.0, lt=1.0)] = 0
 

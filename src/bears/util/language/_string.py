@@ -72,7 +72,7 @@ class NeverFailJsonEncoder(json.JSONEncoder):
         # print(f'Running NeverFailJsonEncoder')
         if isinstance(obj, (np.integer, int)):
             return int(obj)
-        elif isinstance(obj, (np.bool_, bool)):
+        elif isinstance(obj, (np.bool, bool)):
             return bool(obj)
         elif isinstance(obj, (np.floating, float)):
             return float(obj)

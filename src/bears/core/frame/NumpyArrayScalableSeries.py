@@ -62,8 +62,8 @@ class NumpyArrayScalableSeries(ScalableSeries):
                     str_to_object=self._str_to_object,
                 )
             assert isinstance(data, np.ndarray), f"Found type: {type(data)}"
-            if np.issubdtype(data.dtype, np.unicode_) and str_to_object:
-                data: np.ndarray = data.astype(object)  ## Do not allow unicode arrays with dtype like "U<8"
+            if np.issubdtype(data.dtype, np.str_) and str_to_object:
+                data: np.ndarray = data.astype(object)  ## Do not allow unicode arrays with dtype like "<U8"
             self._data: np.ndarray = data
         self.layout_validator(self._data)
         if name is not None and not isinstance(name, (str, int, float)):
@@ -277,8 +277,8 @@ class NumpyArrayScalableSeries(ScalableSeries):
 
     def astype(self, dtype: Union[np.dtype, str]) -> NumpyArrayScalableSeries:
         out: np.ndarray = self._data.astype(dtype)
-        if dtype in {str, "str"} and np.issubdtype(out.dtype, np.unicode_):
-            ## To get true unicode arrays, pass dtype=np.unicode_
+        if dtype in {str, "str"} and np.issubdtype(out.dtype, np.str_):
+            ## To get true unicode arrays, pass dtype=np.str_
             out = out.astype(object)
         return self._constructor(out)
 

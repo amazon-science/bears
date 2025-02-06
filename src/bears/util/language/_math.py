@@ -24,17 +24,17 @@ def mean(vals):
 
 
 def clip(low: Union[int, float], val: Union[int, float], high: Union[int, float]):
-    assert isinstance(low, (int, float, np.integer, np.float_))
-    assert isinstance(high, (int, float, np.integer, np.float_))
-    assert isinstance(val, (int, float, np.integer, np.float_))
+    assert isinstance(low, (int, float, np.integer, np.float64))
+    assert isinstance(high, (int, float, np.integer, np.float64))
+    assert isinstance(val, (int, float, np.integer, np.float64))
     assert low <= high
     return max(low, min(val, high))
 
 
 def pad_interval(low: Union[int, float], high: Union[int, float], pad: float) -> Tuple[float, float]:
-    assert isinstance(low, (int, float, np.integer, np.float_))
-    assert isinstance(high, (int, float, np.integer, np.float_))
-    assert isinstance(pad, (int, float, np.integer, np.float_)) and 0.0 <= pad <= 1.0
+    assert isinstance(low, (int, float, np.integer, np.float64))
+    assert isinstance(high, (int, float, np.integer, np.float64))
+    assert isinstance(pad, (int, float, np.integer, np.float64)) and 0.0 <= pad <= 1.0
     assert low <= high
     width: float = float(high) - float(low)
     pad: float = float(pad)

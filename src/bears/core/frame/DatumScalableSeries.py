@@ -71,7 +71,7 @@ class DatumScalableSeries(ScalableSeries):
     @property
     def dtype(self) -> Union[np.dtype, Type]:
         if self.__empty:
-            return np.float_  ## Default value for numpy when running `np.array([]).dtype`
+            return np.float64  ## Default value for numpy when running `np.array([]).dtype`
         if self.__dtype is None:
             self.__dtype = infer_np_dtype(
                 self._data,
@@ -223,8 +223,8 @@ class DatumScalableSeries(ScalableSeries):
         if isinstance(dtype, str):
             dtype = np.type(dtype)
         out = self._constructor(dtype.__call__(self._data), dtype=dtype)
-        if np.issubdtype(dtype, np.unicode_) and self.__str_to_object:
-            ## To get true unicode arrays, pass dtype=np.unicode_
+        if np.issubdtype(dtype, np.str_) and self.__str_to_object:
+            ## To get true unicode arrays, pass dtype=np.str_
             out = out.astype(object)
         return out
 
