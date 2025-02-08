@@ -72,7 +72,7 @@ class NeverFailJsonEncoder(json.JSONEncoder):
         # print(f'Running NeverFailJsonEncoder')
         if isinstance(obj, (np.integer, int)):
             return int(obj)
-        elif isinstance(obj, (np.bool_, bool)):
+        elif isinstance(obj, (np.bool, bool)):
             return bool(obj)
         elif isinstance(obj, (np.floating, float)):
             return float(obj)
@@ -987,6 +987,14 @@ class String:
         out += ("{:^" + str(width) + "s}").format(text) + cls.NEWLINE
         out += border * width + cls.NEWLINE
         return out
+
+    @classmethod
+    def prefix_each_line(cls, text: str, prefix: str) -> str:
+        return re.sub("^", prefix, text, flags=re.MULTILINE)
+
+    @classmethod
+    def suffix_each_line(cls, text: str, prefix: str) -> str:
+        return re.sub("$", prefix, text, flags=re.MULTILINE)
 
     @classmethod
     def is_stream(cls, obj) -> bool:
