@@ -1,13 +1,13 @@
 import math
 import random
-from typing import Any, Dict, Generator, List, Literal, Optional, Set, Tuple, Type, Union
 from collections import Counter
+from typing import Any, Dict, Generator, List, Literal, Optional, Set, Tuple, Type, Union
 
 import numpy as np
 import pandas as pd
 from pydantic import confloat, conint
 
-from ._import import optional_dependency
+from ._import import np_bool, np_floating, np_integer, np_str, optional_dependency
 from ._structs import as_list, as_set, flatten1d, is_dict_like, is_list_like, is_set_like, is_sorted
 from ._typing import type_str
 from ._utils import get_default, is_null, is_scalar
@@ -54,7 +54,7 @@ def infer_np_dtype(
         If False, it will not subsample data. If True, it will use entire data.
         If 0.0 < sample < 1.0, then we will subsample a fraction of the data.
         If 1 <= sample, we will subsample these many rows of data.
-    :param str_to_object: whether to treat string as objects rather than np.str_ (like "<U1").
+    :param str_to_object: whether to treat string as objects rather than np_str (like "<U1").
     :param return_str_for_collection: whether to return the string 'collection' for collections like list, set,
         numpy array, etc.
     :return:
@@ -74,7 +74,7 @@ def infer_np_dtype(
     has_nulls: bool = False
     for x in random_sample(data, n=sample_size, replacement=False):
         if str_to_object and np.issubdtype(type(x), np.character):
-            ## Fast convert str, np.str_ to object:
+            ## Fast convert str, np_str to object:
             return object
         if not is_scalar(x):
             ## Fast return for collections such as list, tuple, dict, set, np.ndarray, Tensors.
@@ -91,7 +91,7 @@ def infer_np_dtype(
     elif len(dtypes) == 1:
         dtype = next(iter(dtypes))
         ## Ref: https://numpy.org/doc/stable/reference/arrays.dtypes.html#Built-in%20Python%20types
-        if dtype in {bool, np.bool, float, np.float64, complex, np.complex128, bytes}:
+        if dtype in {bool, np_bool, float, np.float64, complex, np.complex128, bytes}:
             return np.dtype(dtype)
     return _np_dtype_fallback(dtypes, has_nulls=has_nulls, str_to_object=str_to_object)
 
@@ -103,17 +103,17 @@ def _np_dtype_fallback(dtypes: Union[Type, Set[Type]], has_nulls: bool, str_to_o
     if all_are_np_subtypes(
         dtypes,
         {
-            np.bool,
+            np_bool,
         },
     ):
         if has_nulls:
             return np.float64  ## Converts None to NaN, and True/False to 1.0/0.0
-        return np.bool
-    elif all_are_np_subtypes(dtypes, {np.bool, np.integer}):
+        return np_bool
+    elif all_are_np_subtypes(dtypes, {np_bool, np_integer}):
         if has_nulls:
             return np.float64  ## Converts None to NaN, True/False to 1.0/0.0, and 123 to 123.0
         return np.int_
-    elif all_are_np_subtypes(dtypes, {np.bool, np.integer, np.floating}):
+    elif all_are_np_subtypes(dtypes, {np_bool, np_integer, np_floating}):
         return np.float64
     elif all_are_np_subtypes(
         dtypes,
@@ -123,8 +123,8 @@ def _np_dtype_fallback(dtypes: Union[Type, Set[Type]], has_nulls: bool, str_to_o
     ):
         if str_to_object:
             return object
-        return np.str_
-    elif all_are_np_subtypes(dtypes, {np.bool, np.integer, np.floating, np.complex128}):
+        return np_str
+    elif all_are_np_subtypes(dtypes, {np_bool, np_integer, np_floating, np.complex128}):
         return np.complex128
     ## Multiple, heterogeneous and incompatible types, return as object
     return object
@@ -135,9 +135,9 @@ def all_are_np_subtypes(
     parent_dtypes: Union[Type, Set[Type]],
 ) -> bool:
     ## Note: the following hold for Python types when checking with np.issubdtype:
-    ## np.issubdtype(bool, np.bool) is True
-    ## np.issubdtype(int, np.integer) is True (however, np.issubdtype(bool, np.integer) is False)
-    ## np.issubdtype(float, np.floating) is True (however, np.issubdtype(int, np.floating) is False)
+    ## np.issubdtype(bool, np_bool) is True
+    ## np.issubdtype(int, np_integer) is True (however, np.issubdtype(bool, np_integer) is False)
+    ## np.issubdtype(float, np_floating) is True (however, np.issubdtype(int, np_floating) is False)
     ## np.issubdtype(complex, np.complex128) is True (however, np.issubdtype(float, np.complex128) is False)
     ## np.issubdtype(str, np.character) is True
     dtypes: Set[Type] = as_set(dtypes)

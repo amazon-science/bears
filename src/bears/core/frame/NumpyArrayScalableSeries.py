@@ -20,6 +20,7 @@ from bears.util import (
     is_null,
     wrap_fn_output,
 )
+from bears.util.language._import import np_number, np_str
 
 NumpyArrayScalableSeries = "NumpyArrayScalableSeries"
 
@@ -62,7 +63,7 @@ class NumpyArrayScalableSeries(ScalableSeries):
                     str_to_object=self._str_to_object,
                 )
             assert isinstance(data, np.ndarray), f"Found type: {type(data)}"
-            if np.issubdtype(data.dtype, np.str_) and str_to_object:
+            if np.issubdtype(data.dtype, np_str) and str_to_object:
                 data: np.ndarray = data.astype(object)  ## Do not allow unicode arrays with dtype like "<U8"
             self._data: np.ndarray = data
         self.layout_validator(self._data)
@@ -277,8 +278,8 @@ class NumpyArrayScalableSeries(ScalableSeries):
 
     def astype(self, dtype: Union[np.dtype, str]) -> NumpyArrayScalableSeries:
         out: np.ndarray = self._data.astype(dtype)
-        if dtype in {str, "str"} and np.issubdtype(out.dtype, np.str_):
-            ## To get true unicode arrays, pass dtype=np.str_
+        if dtype in {str, "str"} and np.issubdtype(out.dtype, np_str):
+            ## To get true unicode arrays, pass dtype=np_str
             out = out.astype(object)
         return self._constructor(out)
 
@@ -342,7 +343,7 @@ class NumpyArrayScalableSeries(ScalableSeries):
         else:
             nan_policy = "propagate"
             data: np.ndarray = self._data
-        if np.issubdtype(data.dtype, np.number):
+        if np.issubdtype(data.dtype, np_number):
             vals, counts = np.unique(data, return_counts=True)
             modes, _ = vals[counts.argmax()], counts.max()
             mode: Union[int, float] = modes[()]

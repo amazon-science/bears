@@ -19,7 +19,7 @@ import pandas as pd
 from pydantic import confloat, conint, validate_call
 
 from ._function import is_function
-from ._import import optional_dependency
+from ._import import np_bool, np_floating, np_integer, optional_dependency
 
 StructuredBlob = Union[List, Dict, List[Dict]]  ## used for type hints.
 KERNEL_START_DT: datetime = datetime.now()
@@ -70,11 +70,11 @@ _PUNCTUATION_REMOVAL_TABLE_WITH_LOWERCASE_AND_SPACE_AND_NUMBERS = str.maketrans(
 class NeverFailJsonEncoder(json.JSONEncoder):
     def default(self, obj):
         # print(f'Running NeverFailJsonEncoder')
-        if isinstance(obj, (np.integer, int)):
+        if isinstance(obj, (np_integer, int)):
             return int(obj)
-        elif isinstance(obj, (np.bool, bool)):
+        elif isinstance(obj, (np_bool, bool)):
             return bool(obj)
-        elif isinstance(obj, (np.floating, float)):
+        elif isinstance(obj, (np_floating, float)):
             return float(obj)
         elif isinstance(obj, (np.ndarray, pd.Series, list, set, tuple)):
             return obj.tolist()

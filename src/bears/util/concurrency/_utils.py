@@ -185,7 +185,7 @@ def wait(
     **kwargs,
 ) -> NoReturn:
     """Join operation on a single future or a collection of futures."""
-    progress_bar: Optional[Dict] = Alias.get_progress_bar(kwargs)
+    progress_bar: Optional[Dict] = Alias.get_progress_bar(kwargs, default_progress_bar=False)
 
     if isinstance(futures, (list, tuple, set, np.ndarray)):
         futures: List[Any] = list(futures)
@@ -299,7 +299,7 @@ def accumulate(
         >>> results = accumulate(futures_dict)
         >>> print(results)  ## {'0': 0.0, '1': 1.0, '2': 2.0}
     """
-    progress_bar: Optional[Dict] = Alias.get_progress_bar(kwargs)
+    progress_bar: Optional[Dict] = Alias.get_progress_bar(kwargs, default_progress_bar=False)
     if isinstance(futures, (list, set, tuple)) and len(futures) > 0:
         if isinstance(first_item(futures), Future):
             item_wait: float = get_default(item_wait, _LOCAL_ACCUMULATE_ITEM_WAIT)
@@ -412,7 +412,7 @@ def accumulate_iter(
     Here we iteratively accumulate and yield completed futures as they have completed.
     This might return them out-of-order.
     """
-    progress_bar: Optional[Dict] = Alias.get_progress_bar(kwargs)
+    progress_bar: Optional[Dict] = Alias.get_progress_bar(kwargs, default_progress_bar=False)
     pbar: ProgressBar = ProgressBar.of(
         progress_bar,
         total=len(futures),
