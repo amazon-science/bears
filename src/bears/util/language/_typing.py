@@ -294,41 +294,39 @@ class Registry(ABC):
 
     @classmethod
     def __register_subclass(cls):
-        subclass_name: str = str(cls.__name__).strip()
-        cls.__add_to_registry(subclass_name, cls)  ## Always register subclass name
-        for k in set(as_list(cls.aliases) + as_list(cls._registry_keys())):
-            if k is not None:
-                cls.__add_to_registry(k, cls)
+        keys_to_register: List[Any] = []
+        for key in [str(cls.__name__)] + as_list(cls.aliases) + as_list(cls._registry_keys()):
+            if key is None:
+                continue
+            elif isinstance(key, (str, AutoEnum)):
+                ## Case-insensitive matching:
+                key: str = String.str_normalize(key)
+            elif isinstance(key, tuple):
+                key: Tuple = tuple(
+                    ## Case-insensitive matching:
+                    String.str_normalize(key_part) if isinstance(key_part, (str, AutoEnum)) else key_part
+                    for key_part in key
+                )
+            keys_to_register.append(key)
+        cls.__add_to_registry(keys_to_register, cls)
 
     @classmethod
     @validate_call
-    def __add_to_registry(cls, key: Any, subclass: Type):
+    def __add_to_registry(cls, keys_to_register: List[Any], subclass: Type):
         subclass_name: str = subclass.__name__
-        if isinstance(key, (str, AutoEnum)):
-            ## Case-insensitive matching:
-            keys_to_register: List[str] = [String.str_normalize(key)]
-        elif isinstance(key, tuple):
-            keys_to_register: List[Tuple] = [
-                tuple(
-                    ## Case-insensitive matching:
-                    String.str_normalize(k) if isinstance(k, (str, AutoEnum)) else k
-                    for k in key
-                )
-            ]
-        else:
-            keys_to_register: List[Any] = [key]
-        for k in keys_to_register:
+        for k in as_set(keys_to_register):  ## Drop duplicates
             if k not in cls._registry:
                 cls._registry[k] = {subclass_name: subclass}
                 continue
             ## Key is in the registry
             registered: Dict[str, Type] = cls._registry[k]
             registered_names: Set[str] = set(registered.keys())
-            assert len(registered_names) > 0, f"Invalid state: key {k} is registered to an empty dict"
+            assert len(registered_names) > 0, f"Invalid state: key '{k}' is registered to an empty dict"
             if subclass_name in registered_names and cls._allow_subclass_override is False:
                 raise KeyError(
-                    f"A subclass with name {subclass_name} is already registered against key {k} for registry under "
-                    f"{cls._registry_base_class}; overriding subclasses is not permitted."
+                    f"A subclass with name '{subclass_name}' is already registered "
+                    f"against key '{k}' for registry under '{cls._registry_base_class}'; "
+                    f"overriding subclasses is not permitted."
                 )
             elif subclass_name not in registered_names and cls._allow_multiple_subclasses is False:
                 assert len(registered_names) == 1, (
@@ -454,9 +452,10 @@ class Parameters(BaseModel, ABC):
             )
 
         except Exception as e:
+            error_msg: str = String.prefix_each_line(String.format_exception_msg(e), "    ")
             raise ValueError(
                 f"Cannot create Pydantic instance of type '{self.class_name}', "
-                f"encountered exception: {String.format_exception_msg(e)}"
+                f"encountered exception:\n{error_msg}"
             )
 
     @classproperty

@@ -17,10 +17,12 @@ class MLType(AutoEnum):
     OBJECT = auto()
 
     ## "Asset" MLTypes:
-    DOCUMENT = auto()  ## For .txt documents, PDFs, etc
     IMAGE = auto()
     AUDIO = auto()
     VIDEO = auto()
+
+    ## "Document" MLTypes:
+    PDF = auto()  ## For .txt documents, PDFs, etc
 
     ## Schema MLTypes:
     INDEX = auto()
@@ -65,10 +67,13 @@ DATA_ML_TYPES: Set[MLType] = {
 }
 
 ASSET_ML_TYPES: Set[MLType] = {
-    MLType.DOCUMENT,
     MLType.IMAGE,
     MLType.AUDIO,
     MLType.VIDEO,
+}
+
+DOCUMENT_ML_TYPES: Set[MLType] = {
+    MLType.PDF,
 }
 
 PREDICTED_ML_TYPES: Set[MLType] = {

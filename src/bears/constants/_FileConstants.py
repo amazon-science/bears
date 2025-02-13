@@ -67,6 +67,7 @@ class FileContents(AutoEnum):
     PICKLED_OBJECT = auto()
     DATAFRAME = auto()
     ASSET = auto()
+    DOCUMENT = auto()
     LABEL_ENCODING_DATAFRAME = auto()
     TRANSFORMATION_PIPELINE_ARTIFACTS_DIR = auto()
     ALGORITHM_TRAIN_DATASET = auto()
@@ -112,6 +113,8 @@ FILE_FORMAT_TO_FILE_ENDING_MAP: Dict[FileFormat, Union[str, List[str]]] = {
     FileFormat.ICO: ".ico",
     FileFormat.WEBP: ".webp",
     FileFormat.SVG: ".svg",
+    ## Document:
+    FileFormat.PDF: ".pdf",
     ## Algorithm formats:
     ### BlazingText:
     FileFormat.BLAZINGTEXT: ".blazingtext.txt",

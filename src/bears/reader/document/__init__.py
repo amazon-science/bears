@@ -1,0 +1,1 @@
+from bears.reader.document.pdf import *
