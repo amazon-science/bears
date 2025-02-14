@@ -7,3 +7,4 @@ from bears.util.profiling import *
 from bears.util.filesystem import *
 from bears.util.logging import *
 from bears.util.schema import *
+from bears.util.aws import *

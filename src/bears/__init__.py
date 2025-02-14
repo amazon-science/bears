@@ -4,6 +4,7 @@ _LIBRARY_NAME: str = 'bears'
 import bears.util
 import bears.constants
 from bears.asset import Asset
+from bears.document import Document
 from bears.FileMetadata import FileMetadata
 from bears.core.frame.ScalableDataFrame import ScalableDataFrame, ScalableOrRaw, \
     ScalableDataFrameRawType, ScalableDataFrameOrRaw, is_scalable

@@ -19,7 +19,7 @@ class Asset(Parameters, Registry, ABC):
     _allow_subclass_override = True
 
     mltype: ClassVar[MLType]
-    path: Optional[Union[FileMetadata, str]] = None
+    path: Optional[FileMetadata] = None
     data: Any
     layout: DataLayout
 

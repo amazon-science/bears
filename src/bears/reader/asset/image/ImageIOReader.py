@@ -6,6 +6,7 @@ from pydantic import constr
 
 from bears.asset import Image
 from bears.constants import FileContents, FileFormat, Storage
+from bears.FileMetadata import FileMetadata
 from bears.reader.asset.image.ImageReader import ImageReader
 from bears.util import optional_dependency
 from bears.util.aws import S3Util
@@ -41,7 +42,7 @@ with optional_dependency("imageio"):
                 **self.params.model_dump(),
             )
             return Image(
-                path=source if storage in {Storage.S3, Storage.LOCAL_FILE_SYSTEM} else None,
+                path=FileMetadata.of(source) if storage in {Storage.S3, Storage.LOCAL_FILE_SYSTEM} else None,
                 data=img,
                 height=img.shape[0],
                 width=img.shape[1],
@@ -79,7 +80,7 @@ with optional_dependency("imageio"):
                 height: int = img.shape[0]
                 width: int = img.shape[1]
             return Image(
-                path=source if storage in {Storage.S3, Storage.LOCAL_FILE_SYSTEM} else None,
+                path=FileMetadata.of(source) if storage in {Storage.S3, Storage.LOCAL_FILE_SYSTEM} else None,
                 data=img,
                 height=height,
                 width=width,
