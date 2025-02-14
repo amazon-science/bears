@@ -18,6 +18,7 @@ from bears.util import (
     is_null,
     optional_dependency,
 )
+from bears.util.language._import import np_str
 
 DatumScalableSeries = "DatumScalableSeries"
 
@@ -223,8 +224,8 @@ class DatumScalableSeries(ScalableSeries):
         if isinstance(dtype, str):
             dtype = np.type(dtype)
         out = self._constructor(dtype.__call__(self._data), dtype=dtype)
-        if np.issubdtype(dtype, np.str_) and self.__str_to_object:
-            ## To get true unicode arrays, pass dtype=np.str_
+        if np.issubdtype(dtype, np_str) and self.__str_to_object:
+            ## To get true unicode arrays, pass dtype=np_str
             out = out.astype(object)
         return out
 

@@ -24,7 +24,7 @@ import pandas as pd
 from autoenum import AutoEnum
 
 from ._alias import set_param_from_alias
-from ._import import optional_dependency
+from ._import import np_bool, optional_dependency
 from ._utils import get_default, is_not_null
 
 ListOrTuple = Union[List, Tuple]
@@ -902,7 +902,7 @@ with optional_dependency("torch"):
     import torch
 
     NUMPY_TO_TORCH_DTYPE_MAP = {
-        np.bool: torch.bool,
+        np_bool: torch.bool,
         np.uint8: torch.uint8,
         np.int8: torch.int8,
         np.int16: torch.int16,

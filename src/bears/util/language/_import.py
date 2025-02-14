@@ -1,3 +1,4 @@
+import numbers
 import types
 from contextlib import contextmanager
 from typing import List, Literal, Optional, Set, Tuple, Union
@@ -78,6 +79,49 @@ def optional_dependency(
                 msg = f'Missing optional dependency "{missing_module}". Use pip or conda to install.'
                 print(f"Warning: {msg}")
                 __WARNED_OPTIONAL_MODULES.add(missing_module)
+
+
+_IS_NUMPY_INSTALLED: bool = False
+
+np_number = numbers.Real
+np_bool = bool
+np_integer = int
+np_floating = float
+np_str = str
+
+with optional_dependency("numpy"):
+    import numpy as np
+
+    assert isinstance(np.ndarray, type)
+
+    ## Patch for types between Numpy v1.20+ to v2.0+:
+    if hasattr(np, "number"):
+        np_number = np.number  ## In Numpy v1.20+ and Numpy v2.0+
+    if hasattr(np, "integer"):
+        np_integer = np.integer  ## In Numpy v1.20+ and Numpy v2.0+
+    if hasattr(np, "floating"):
+        np_floating = np.floating  ## In Numpy v1.20+ and Numpy v2.0+
+    if hasattr(np, "bool_"):
+        np_bool = np.bool_  ## In Numpy v1.20+ and Numpy v2.0+
+    elif hasattr(np, "bool"):
+        np_bool = np.bool  ## In Numpy v2.0+
+    if hasattr(np, "unicode_"):
+        np_str = np.unicode_  ## In Numpy v1.20+
+    elif hasattr(np, "str_"):
+        np_str = np.str_  ## In Numpy v2.0+
+
+    _IS_NUMPY_INSTALLED: bool = True
+
+
+_IS_PANDAS_INSTALLED: bool = False
+
+with optional_dependency("pandas"):
+    import pandas as pd
+
+    assert isinstance(pd.DataFrame, type)
+    assert isinstance(pd.Series, type)
+
+    _IS_PANDAS_INSTALLED: bool = True
 
 
 _IS_RAY_INSTALLED: bool = False
