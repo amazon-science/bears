@@ -357,9 +357,10 @@ class Registry(ABC):
             Subclass: Optional[Dict[str, Type]] = cls._registry.get(key)
         if Subclass is None:
             if raise_error:
+                available_keys: str = "\n".join(sorted(set(cls._registry.keys())))
                 raise KeyError(
                     f'Could not find subclass of {cls} using key: "{key}" (type={type(key)}). '
-                    f"Available keys are: {set(cls._registry.keys())}"
+                    f"Available keys are:\n{available_keys}"
                 )
             return None
         if len(Subclass) == 1:
@@ -550,7 +551,7 @@ class MutableParameters(Parameters):
         frozen=False,
         ## type-checking when setting parameters.
         ## Ref: https://docs.pydantic.dev/latest/api/config/#pydantic.config.ConfigDict.validate_assignment
-        validate_assignment=True,
+        validate_assignment=False,
     )
 
 

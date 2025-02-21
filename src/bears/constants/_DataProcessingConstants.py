@@ -114,7 +114,7 @@ class Parallelize(AutoEnum):
     asyncio = alias("async", "asynchronous")
     sync = alias("synchronous")
     threads = alias("thread")
-    processes = alias("proc", "process")
+    processes = alias("proc", "procs", "process")
     ray = auto()
 
 

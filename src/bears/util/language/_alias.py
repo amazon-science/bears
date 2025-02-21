@@ -9,6 +9,8 @@ from typing import (
     Union,
 )
 
+from pydantic import BaseModel
+
 from ._utils import Utility, get_default
 
 
@@ -70,7 +72,7 @@ class _AliasMeta(type):
 class Alias(Utility, metaclass=_AliasMeta):
     @classmethod
     def set_AlgorithmClass(cls, params: Dict, param: str = "AlgorithmClass", **kwargs):
-        set_param_from_alias(params, param=param, alias=["algorithm", "AlgorithmClass"], **kwargs)
+        set_param_from_alias(params, param=param, alias=["algo", "algorithm", "AlgorithmClass"], **kwargs)
 
     @classmethod
     def set_retry(cls, params: Dict, param: str = "retry", **kwargs):
@@ -258,14 +260,20 @@ class Alias(Utility, metaclass=_AliasMeta):
         )
 
     @classmethod
-    def get_progress_bar(cls, params, *, default_progress_bar: bool = True, **kwargs) -> Optional[Dict]:
+    def get_progress_bar(
+        cls,
+        params,
+        *,
+        default_progress_bar: bool = True,
+        **kwargs,
+    ) -> Optional[Union[Dict, BaseModel]]:
         Alias.set_progress_bar(params, **kwargs)
         progress_bar: Union[Dict, bool] = params.pop("progress_bar", default_progress_bar)
         if progress_bar is False:
             progress_bar: Optional[Dict] = None
         elif progress_bar is True:
             progress_bar: Optional[Dict] = dict()
-        assert progress_bar is None or isinstance(progress_bar, dict)
+        assert progress_bar is None or isinstance(progress_bar, (dict, BaseModel))
         return progress_bar
 
     @classmethod

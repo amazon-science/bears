@@ -206,7 +206,7 @@ def wait(
                         pbar.update(1)
                     time.sleep(item_wait)
             time.sleep(iter_wait)
-        pbar.success("Done", close=False)
+        pbar.success()
     elif isinstance(futures, dict):
         futures: List[Tuple[Any, Any]] = list(futures.items())
         completed_futures: List[bool] = [
@@ -228,7 +228,7 @@ def wait(
                         pbar.update(1)
                     time.sleep(item_wait)
             time.sleep(iter_wait)
-        pbar.success("Done", close=False)
+        pbar.success()
     else:
         wait_if_future(futures)
 
@@ -337,7 +337,7 @@ def accumulate(
                         pbar.update(1)
                     time.sleep(item_wait)
             time.sleep(iter_wait)
-        pbar.success("Done", close=False)
+        pbar.success()
         return type(futures)(accumulated_futures)  ## Convert
     elif isinstance(futures, dict) and len(futures) > 0:
         if isinstance(first_item(futures)[0], Future) or isinstance(first_item(futures)[1], Future):
@@ -394,7 +394,7 @@ def accumulate(
                         pbar.update(1)
                     time.sleep(item_wait)
             time.sleep(iter_wait)
-        pbar.success("Done", close=False)
+        pbar.success()
         return dict(accumulated_futures)
     else:
         return get_result(futures)
@@ -440,11 +440,11 @@ def accumulate_iter(
                         time.sleep(item_wait)
                     except Exception as e:
                         if not allow_partial_results:
-                            pbar.failed(close=False)
+                            pbar.failed()
                             raise e
                         yield fut
             time.sleep(iter_wait)
-        pbar.success("Done", close=False)
+        pbar.success()
     elif isinstance(futures, dict) and len(futures) > 0:
         ## Copy as list:
         futures: List[Tuple[Any, Any]] = [(fut_k, fut_v) for fut_k, fut_v in futures.items()]
@@ -466,11 +466,11 @@ def accumulate_iter(
                         time.sleep(item_wait)
                     except Exception as e:
                         if not allow_partial_results:
-                            pbar.failed(close=False)
+                            pbar.failed()
                             raise e
                         yield (fut_k, fut_v)
             time.sleep(iter_wait)
-        pbar.success("Done", close=False)
+        pbar.success()
     else:
         if not isinstance(futures, (list, set, tuple, dict)):
             raise NotImplementedError(f"Cannot iteratively collect from object of type: {type_str(futures)}.")

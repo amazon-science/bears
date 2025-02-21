@@ -49,7 +49,9 @@ def is_valid_idx(
 
 
 def iter_batches(
-    struct: Union[List, Tuple, Set, Dict, np.ndarray, pd.Series, pd.DataFrame, int], batch_size: int, **kwargs
+    struct: Union[List, Tuple, Set, Dict, np.ndarray, pd.Series, pd.DataFrame, int],
+    batch_size: int,
+    **kwargs,
 ) -> Generator[List[Any], None, None]:
     assert isinstance(batch_size, int) and batch_size > 0
     progress_bar: Optional[Dict] = Alias.get_progress_bar(kwargs)
