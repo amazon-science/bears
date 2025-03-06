@@ -40,7 +40,10 @@ class ProgressBar(MutableParameters):
     miniters: conint(ge=1) = 1
     _pending_updates: int = 0
 
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(
+        extra="allow",
+        validate_assignment=False,
+    )
 
     @model_validator(mode="before")
     @classmethod

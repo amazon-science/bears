@@ -111,6 +111,10 @@ class RayPoolExecutor(Executor, Parameters):
     _running_tasks: Dict[str, Any] = {}  ## Maps task_uid to Ray ObjectRef
     _latest_submit: Optional[int] = None
 
+    @property
+    def _max_workers(self) -> Union[int, Literal[inf]]:
+        return self.max_workers
+
     def _set_asyncio(self):
         """
         Lazily initializes the asyncio event loop and its thread. This is done on-demand to avoid
