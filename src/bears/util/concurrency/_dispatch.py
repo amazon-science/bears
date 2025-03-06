@@ -1,16 +1,10 @@
+import builtins
+import itertools
+import math
 import time
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from concurrent.futures._base import Executor
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Optional,
-    Set,
-    Tuple,
-    Union,
-)
+from typing import Any, Callable, Dict, Generator, Iterator, List, Optional, Set, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -21,6 +15,7 @@ from bears.util.language import (
     Alias,
     Parameters,
     ProgressBar,
+    as_tuple,
     filter_kwargs,
     get_default,
     is_dict_like,
@@ -42,7 +37,6 @@ from ._utils import (
     _LOCAL_ACCUMULATE_ITER_WAIT,
     _RAY_ACCUMULATE_ITEM_WAIT,
     _RAY_ACCUMULATE_ITER_WAIT,
-    accumulate,
     accumulate_iter,
 )
 
@@ -202,177 +196,6 @@ def dispatch_executor(
         )
 
 
-def dispatch_apply(
-    struct: Union[List, Tuple, np.ndarray, pd.Series, Set, frozenset, Dict],
-    *args,
-    fn: Callable,
-    parallelize: Parallelize,
-    forward_parallelize: bool = False,
-    item_wait: Optional[float] = None,
-    iter_wait: Optional[float] = None,
-    iter: bool = False,
-    **kwargs,
-) -> Any:
-    """
-    Applies a function to each element in a data structure in parallel using the specified execution strategy.
-    Similar to map() but with parallel execution capabilities and progress tracking.
-
-    The function handles different types of parallel execution:
-    - Synchronous (single-threaded)
-    - Asyncio-based concurrent execution (for low-latency async/await functions)
-    - Thread-based parallelism (for IO-bound tasks)
-    - Process-based parallelism (for CPU-bound tasks)
-    - Ray-based distributed execution (for multi-machine execution)
-
-    Args:
-        struct: Input data structure to iterate over. Can be list-like or dict-like
-        *args: Additional positional args passed to each fn call
-        fn: Function to apply to each element
-        parallelize: Execution strategy (sync, threads, processes, ray, asyncio)
-        forward_parallelize: If True, passes the parallelize strategy to fn
-        item_wait: Delay between submitting individual items (rate limiting)
-        iter_wait: Delay between checking completion of submitted items
-        iter: If True, returns an iterator that yields results as they complete
-        **kwargs: Additional keyword args passed to each fn call
-
-    Example usage:
-        >>> data = [1, 2, 3, 4, 5]
-        >>> def square(x):
-                return x * x
-
-        >>> ## Process items in parallel using threads
-        >>> results = dispatch_apply(
-                data,
-                fn=square,
-                parallelize='threads',
-                max_workers=4
-            )
-
-        >>> ## Process dictionary items using processes
-        >>> data = {'a': 1, 'b': 2, 'c': 3}
-        >>> results = dispatch_apply(
-                data,
-                fn=square,
-                parallelize='processes',
-                progress_bar=True
-            )
-    """
-    ## Convert string parallelization strategy to enum
-    parallelize: Parallelize = Parallelize.from_str(parallelize)
-
-    ## Set appropriate wait times based on execution strategy:
-    ## - Sync/asyncio don't need waits since they're single-threaded
-    ## - Local execution (threads/processes) can use shorter waits
-    ## - Ray execution needs longer waits due to distributed nature
-    item_wait: float = get_default(
-        item_wait,
-        {
-            Parallelize.ray: _RAY_ACCUMULATE_ITEM_WAIT,
-            Parallelize.processes: _LOCAL_ACCUMULATE_ITEM_WAIT,
-            Parallelize.threads: _LOCAL_ACCUMULATE_ITEM_WAIT,
-            Parallelize.asyncio: 0.0,
-            Parallelize.sync: 0.0,
-        }[parallelize],
-    )
-    iter_wait: float = get_default(
-        iter_wait,
-        {
-            Parallelize.ray: _RAY_ACCUMULATE_ITER_WAIT,
-            Parallelize.processes: _LOCAL_ACCUMULATE_ITER_WAIT,
-            Parallelize.threads: _LOCAL_ACCUMULATE_ITER_WAIT,
-            Parallelize.asyncio: 0.0,
-            Parallelize.sync: 0.0,
-        }[parallelize],
-    )
-
-    ## Forward parallelization strategy to child function if requested:
-    if forward_parallelize:
-        kwargs["parallelize"] = parallelize
-
-    ## Create appropriate executor based on parallelization strategy:
-    executor: Optional = dispatch_executor(
-        parallelize=parallelize,
-        **kwargs,
-    )
-
-    try:
-        ## Configure progress bars for both submission and collection phases.
-        ## Default to showing progress unless explicitly disabled:
-        progress_bar: Optional[Dict] = Alias.get_progress_bar(kwargs)
-        submit_pbar: ProgressBar = ProgressBar.of(
-            progress_bar,
-            total=len(struct),
-            desc="Submitting",
-            prefer_kwargs=False,
-            unit="item",
-        )
-        collect_pbar: ProgressBar = ProgressBar.of(
-            progress_bar,
-            total=len(struct),
-            desc="Collecting",
-            prefer_kwargs=False,
-            unit="item",
-        )
-
-        ## Handle list-like structures (lists, tuples, sets, arrays):
-        if is_list_or_set_like(struct):
-            futs = []
-            for v in struct:
-                ## Wrap user function to handle item-level execution
-                def submit_task(item, **dispatch_kwargs):
-                    return fn(item, **dispatch_kwargs)
-
-                ## Submit task for parallel execution with rate limiting (item_wait):
-                futs.append(
-                    dispatch(
-                        fn=submit_task,
-                        item=v,
-                        parallelize=parallelize,
-                        executor=executor,
-                        delay=item_wait,
-                        **filter_kwargs(fn, **kwargs),
-                    )
-                )
-                submit_pbar.update(1)
-
-        ## Handle dictionary-like structures:
-        elif is_dict_like(struct):
-            futs = {}
-            for k, v in struct.items():
-
-                def submit_task(item, **dispatch_kwargs):
-                    return fn(item, **dispatch_kwargs)
-
-                ## Submit task with key for maintaining dict structure:
-                futs[k] = dispatch(
-                    fn=submit_task,
-                    key=k,
-                    item=v,
-                    parallelize=parallelize,
-                    executor=executor,
-                    delay=item_wait,
-                    **filter_kwargs(fn, **kwargs),
-                )
-                submit_pbar.update(1)
-        else:
-            raise NotImplementedError(f"Unsupported type: {type_str(struct)}")
-
-        submit_pbar.success()
-
-        ## Return results either as iterator or all-at-once (afer accumulating all futures):
-        if iter:
-            return accumulate_iter(
-                futs, item_wait=item_wait, iter_wait=iter_wait, progress_bar=collect_pbar, **kwargs
-            )
-        else:
-            return accumulate(
-                futs, item_wait=item_wait, iter_wait=iter_wait, progress_bar=collect_pbar, **kwargs
-            )
-    finally:
-        ## Ensure executor is properly cleaned up even if processing fails:
-        stop_executor(executor)
-
-
 def stop_executor(
     executor: Optional[Executor],
     force: bool = True,  ## Forcefully terminate, might lead to work being lost.
@@ -406,3 +229,275 @@ def stop_executor(
                 actor.stop(cancel_futures=force)
                 del actor
             del executor
+
+
+def map_reduce(
+    struct: Union[List, Tuple, np.ndarray, pd.Series, Set, frozenset, Dict, Iterator],
+    *args,
+    fn: Callable,
+    parallelize: Parallelize,
+    forward_parallelize: bool = False,
+    item_wait: Optional[float] = None,
+    iter_wait: Optional[float] = None,
+    iter: bool = False,
+    reduce_fn: Optional[Callable] = None,
+    worker_queue_len: Optional[int] = 5,
+    **kwargs,
+) -> Optional[Union[Any, Generator]]:
+    """
+    Applies a function to batches of elements in a data structure in parallel.
+    Processes data in batches to manage memory usage.
+
+    This is particularly useful for processing large datasets where you want to:
+    1. Control memory usage by only keeping a number of batches of data in memory at once
+    2. Take advantage of parallel execution for efficient processing
+    3. Track progress of both batch submission and results collection
+
+    Args:
+        struct: Input data structure to iterate over (list-like, dict-like, or iterator)
+        *args: Additional positional args passed to each fn call
+        fn: Function to apply to each element in the batch
+        parallelize: Execution strategy (sync, threads, processes, ray, asyncio)
+        batch_size: Number of items to process in each batch (memory management)
+        forward_parallelize: If True, passes the parallelize strategy to fn
+        item_wait: Delay between processing individual items within a batch
+        iter_wait: Delay between checking completion of submitted batches
+        iter: If True, returns an iterator that yields results as they complete
+        reduce_fn: Optional function to reduce/combine results from each batch
+        worker_queue_len: Number of batches to keep in flight per worker
+        **kwargs: Additional keyword args passed to each fn call
+
+    Returns:
+        For list-like inputs: A list containing results for each input item
+        For dict-like inputs: A dict mapping keys to results
+        If iter=True: An iterator yielding results as they become available
+        If reduce_fn is provided: The result of applying reduce_fn to all batch results
+
+    Example Usage (parallel map only):
+        >>> def process_query_df(query_id, query_df):
+        >>>     query_df: pd.DataFrame = set_ranks(query_df, sort_col="example_id")
+        >>>     query_df['product_text'] = query_df['product_text'].apply(clean_text)
+        >>>     return query_df['product_text'].apply(len).mean()
+        >>>
+        >>> for mean_query_doc_lens in map_reduce(
+        >>>     retrieval_dataset.groupby("query_id"),
+        >>>     fn=process_query_df,
+        >>>     parallelize='processes',
+        >>>     max_workers=20,
+        >>>     pbar=dict(miniters=1),
+        >>>     batch_size=30,
+        >>>     iter=True,
+        >>> ):
+        >>>     ## Prints the output of each call to process_query_df, which is the mean length of
+        >>>     ## product_text for each query_df:
+        >>>     print(mean_query_doc_lens)
+        >>> 1171.090909090909
+        >>> 1317.7931034482758
+        >>> 2051.945945945946
+        >>> 1249.9375
+        >>> ...
+
+    Example Usage (parallel map and reduce):
+        >>> def process_query_df(query_id, query_df):
+        >>>     query_df: pd.DataFrame = set_ranks(query_df, sort_col="example_id")
+        >>>     query_df['product_text'] = query_df['product_text'].apply(clean_text)
+        >>>     return query_df['product_text'].apply(len).sum()
+        >>>
+        >>> def reduce_query_df(l):
+        >>>     ## Applied to every batch of outputs from process_query_df
+        >>>     ## and then again to thr final list of reduced outputs:
+        >>>     return sum(l)
+        >>>
+        >>> print(map_reduce(
+        >>>     retrieval_dataset.groupby("query_id"),
+        >>>     fn=process_query_df,
+        >>>     parallelize='processes',
+        >>>     max_workers=20,
+        >>>     pbar=True,
+        >>>     batch_size=30,
+        >>>     reduce_fn=reduce_query_df,
+        >>> ))
+        >>> 374453878
+    """
+    # Convert string parallelization strategy to enum
+    parallelize: Parallelize = Parallelize(parallelize)
+
+    # Process batch_size aliases (nrows, chunk_size, etc.)
+    Alias.set_num_rows(kwargs)
+    batch_size: int = kwargs.get("num_rows", 1)
+    Alias.set_progress_bar(kwargs)
+    progress_bar: Union[Dict, bool] = kwargs.pop("progress_bar", True)
+    if progress_bar is False:
+        progress_bar: Optional[Dict] = None
+    elif progress_bar is True:
+        progress_bar: Optional[Dict] = dict()
+    assert progress_bar is None or isinstance(progress_bar, dict)
+
+    # Set appropriate wait times based on execution strategy
+    item_wait: float = get_default(
+        item_wait,
+        {
+            Parallelize.ray: _RAY_ACCUMULATE_ITEM_WAIT,
+            Parallelize.processes: _LOCAL_ACCUMULATE_ITEM_WAIT,
+            Parallelize.threads: _LOCAL_ACCUMULATE_ITEM_WAIT,
+            Parallelize.asyncio: 0.0,
+            Parallelize.sync: 0.0,
+        }[parallelize],
+    )
+    iter_wait: float = get_default(
+        iter_wait,
+        {
+            Parallelize.ray: _RAY_ACCUMULATE_ITER_WAIT,
+            Parallelize.processes: _LOCAL_ACCUMULATE_ITER_WAIT,
+            Parallelize.threads: _LOCAL_ACCUMULATE_ITER_WAIT,
+            Parallelize.asyncio: 0.0,
+            Parallelize.sync: 0.0,
+        }[parallelize],
+    )
+
+    # Forward parallelization strategy if requested
+    if forward_parallelize:
+        kwargs["parallelize"] = parallelize
+
+    if reduce_fn is not None and iter:
+        raise ValueError("Cannot use reduce_fn with iter=True")
+
+    # Functions to process batches
+    def process_batch(
+        batch_data: List[Any],
+        batch_index: int,
+        batch_reduce_fn: Optional[Callable],
+        **batch_kwargs,
+    ):
+        """Process a batch of items with optional delay between items"""
+        results = []
+        for item in batch_data:
+            result = fn(*as_tuple(item), **batch_kwargs)
+            results.append(result)
+            if item_wait > 0:
+                time.sleep(item_wait)
+        # If using reduce_fn, collect results for later final reduction
+        if batch_reduce_fn is not None:
+            results = batch_reduce_fn(results)
+        return results
+
+    if is_dict_like(struct):
+        # Convert to list of (key, value) pairs for batching
+        is_dict = True
+        struct: List = list(struct.items())
+    else:
+        is_dict = False
+
+    # For list-like structures or general iterators
+    if is_list_or_set_like(struct) or hasattr(struct, "__iter__"):
+        # Determine total batches if possible for progress tracking
+        total_batches: Optional[int] = None
+        if hasattr(struct, "__len__"):
+            total_batches: int = math.ceil(len(struct) / batch_size)
+
+        submit_pbar: ProgressBar = ProgressBar.of(
+            progress_bar,
+            total=total_batches,
+            desc="Submitting",
+            prefer_kwargs=False,
+            unit="item" if batch_size == 1 else "batch",
+            disable=(parallelize is Parallelize.sync),
+        )
+        collect_pbar: ProgressBar = ProgressBar.of(
+            progress_bar,
+            total=total_batches,
+            desc="Processing" if parallelize is Parallelize.sync else "Collecting",
+            prefer_kwargs=False,
+            unit="item" if batch_size == 1 else "batch",
+        )
+
+        # Create iterator to process in batches
+        struct_iter: Iterator = builtins.iter(struct)
+
+        # Interspersed submission and collection mode
+        def yield_results_interspersed():
+            # Create appropriate executor based on parallelization strategy
+
+            executor: Optional[Executor] = dispatch_executor(
+                parallelize=parallelize,
+                **kwargs,
+            )
+            try:
+                if parallelize in {Parallelize.sync}:
+                    max_pending_futures: int = 1
+                else:
+                    max_pending_futures: int = worker_queue_len * executor._max_workers
+                batch_idx = 0
+                pending_futures = []
+                completed = False
+                all_results = []
+
+                while True:
+                    # Submit jobs until we reach max_pending_futures limit or run out of items
+                    while len(pending_futures) < max_pending_futures and not completed:
+                        batch = list(itertools.islice(struct_iter, batch_size))
+                        if len(batch) == 0:  # No more items
+                            completed = True
+                            break
+
+                        # Submit batch for parallel processing
+                        fut = dispatch(
+                            fn=process_batch,
+                            batch_data=batch,
+                            batch_index=batch_idx,
+                            batch_reduce_fn=reduce_fn,
+                            parallelize=parallelize,
+                            executor=executor,
+                            **filter_kwargs(fn, **kwargs),
+                        )
+                        pending_futures.append(fut)
+                        batch_idx += 1
+                        submit_pbar.update(1)
+
+                    if len(pending_futures) == 0 and completed:
+                        # We're done - no more pending futures and no more batches
+                        break
+                    else:
+                        # Check for completed futures and yield their results
+                        # Get results from completed futures using accumulate_iter
+                        for batch_result in accumulate_iter(
+                            pending_futures,
+                            item_wait=0,  # No additional wait needed since we're checking each iteration
+                            iter_wait=0,
+                            progress_bar=False,  # We'll update our own progress bar
+                        ):
+                            collect_pbar.update(1)
+
+                            # Otherwise yield individual results
+                            if reduce_fn is not None:
+                                all_results.append(batch_result)
+                            else:
+                                if is_dict:
+                                    for k, v in batch_result:
+                                        yield k, v
+                                else:
+                                    for item in batch_result:
+                                        yield item
+                        pending_futures = []
+
+                # If we have a reduce function, apply it to all collected results
+                if reduce_fn is not None:
+                    final_result = reduce_fn(all_results)
+                    yield final_result
+
+                submit_pbar.success()
+                collect_pbar.success()
+            finally:
+                # Ensure executor is properly cleaned up even if processing fails
+                stop_executor(executor)
+
+        # Return the generator that interleaves submission and collection
+        gen = yield_results_interspersed()
+        if reduce_fn is not None:
+            return next(gen)
+        if iter:
+            return gen
+        else:
+            return list(gen)
+    else:
+        raise NotImplementedError(f"Unsupported type: {type_str(struct)}")
