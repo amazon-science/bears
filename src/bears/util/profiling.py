@@ -12,7 +12,7 @@ from typing import (
 
 from pydantic import confloat, model_validator
 
-from bears.util.language import Alias, MutableParameters, Parameters, String, set_param_from_alias
+from bears.util.language import Alias, MutableParameters, Parameters, String, beep, set_param_from_alias
 from bears.util.logging import Log
 
 
@@ -33,6 +33,7 @@ class Timer(Parameters):
     task: str
     logger: Optional[Callable] = Log.info
     silent: bool = False
+    beep: bool = False
     single_line: bool = False  ## Single-line printing
     i: Optional[int] = None
     max_i: Optional[int] = None
@@ -163,6 +164,8 @@ class Timer(Parameters):
         self._end_dt = now
         if self.should_log:
             self.logger(self._end_msg())
+        if self.beep:
+            beep()
 
     @property
     def should_log(self) -> bool:

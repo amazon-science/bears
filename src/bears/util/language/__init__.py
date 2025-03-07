@@ -6,6 +6,7 @@ from bears.util.language._math import *
 from bears.util.language._pbar import *
 from bears.util.language._selection import *
 from bears.util.language._string import *
+from bears.util.language._audio import *
 from bears.util.language._structs import *
 from bears.util.language._testing import *
 from bears.util.language._typing import *
