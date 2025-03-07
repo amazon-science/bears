@@ -17,7 +17,6 @@ class JsonLinesWriter(DataFrameWriter):
     class Params(DataFrameWriter.Params):
         orient: constr(min_length=1) = "records"
         lines: bool = True
-        index: bool = True
 
     def _write_sdf(
         self,

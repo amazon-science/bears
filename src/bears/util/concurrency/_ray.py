@@ -25,6 +25,9 @@ from bears.util.language import (
     String,
     UserEnteredParameters,
     as_list,
+    filter_keys,
+    get_default,
+    remove_nulls,
 )
 from bears.util.language._import import (
     _IS_DASK_INSTALLED,
@@ -87,22 +90,29 @@ class RayPoolExecutor(Executor, Parameters):
     using asyncio to control concurrency.
 
     Example usage:
-        >>> executor = RayPoolExecutor(max_workers=4)  ## Must have ray installed
+        >>> executor = RayPoolExecutor(
+                max_workers=4,
+                num_cpus=2,  ## Use 2 cpus by default
+            )
         >>> future = executor.submit(
                 my_function,
                 arg1,
                 arg2,
-                num_cpus=2  ## Allocate 2 CPUs for this task
+                num_cpus=0.5  ## Override to use 0.5 CPUs for this particular task
             )
         >>> result = ray.get(future)  ## Wait for and retrieve the result
 
     Attributes:
         max_workers: Maximum number of concurrent Ray tasks. Pass float('inf') for unlimited tasks.
+        num_cpus: number of CPUs to use for each task
+        num_gpus: number of GPUs to use for each task
         iter_wait: Time to wait between iterations when checking task completion.
         item_wait: Time to wait between checking individual tasks.
     """
 
     max_workers: Union[int, Literal[inf]]
+    num_cpus: Optional[Union[conint(ge=1), confloat(ge=0.0, lt=1.0)]] = None
+    num_gpus: Optional[Union[conint(ge=1), confloat(ge=0.0, lt=1.0)]] = None
     iter_wait: float = _RAY_ACCUMULATE_ITER_WAIT
     item_wait: float = _RAY_ACCUMULATE_ITEM_WAIT
     _asyncio_event_loop: Optional = None
@@ -137,8 +147,6 @@ class RayPoolExecutor(Executor, Parameters):
         fn: Callable,
         *args,
         scheduling_strategy: str = "SPREAD",
-        num_cpus: int = 1,
-        num_gpus: int = 0,
         max_retries: int = 0,
         retry_exceptions: Union[List, bool] = True,
         **kwargs,
@@ -150,8 +158,8 @@ class RayPoolExecutor(Executor, Parameters):
         Args:
             fn: Function to execute as a task
             scheduling_strategy: Ray's scheduling strategy ("SPREAD" distributes tasks evenly across nodes).
-            num_cpus: Number of CPUs required per task
-            num_gpus: Number of GPUs required per task
+            num_cpus: (Optional) Number of CPUs required per task, defaults to 0
+            num_gpus: (Optional) Number of GPUs required per task, defaults to 1
             max_retries: Number of times to retry failed tasks
             retry_exceptions: Which exceptions should trigger retries
             *args, **kwargs: Arguments passed to fn
@@ -162,6 +170,11 @@ class RayPoolExecutor(Executor, Parameters):
         """
         # print(f'Running {fn_str(fn)} using {Parallelize.ray} with num_cpus={num_cpus}, num_gpus={num_gpus}')
         _check_is_ray_installed()
+
+        Alias.set_num_cpus(kwargs)
+        Alias.set_num_gpus(kwargs)
+        num_cpus: float = get_default(kwargs.get("num_cpus"), self.num_cpus, 1.0)
+        num_gpus: float = get_default(kwargs.get("num_gpus"), self.num_gpus, 0.0)
 
         def _submit_task():
             return _run_parallel_ray_executor.options(
@@ -245,7 +258,6 @@ def run_parallel_ray(
     **kwargs,
 ):
     _check_is_ray_installed()
-    resources: RayResources = RayResources(**kwargs)
     # print(f'Running {fn_str(fn)} using {Parallelize.ray} with num_cpus={num_cpus}, num_gpus={num_gpus}')
     if executor is not None:
         assert isinstance(executor, RayPoolExecutor)
@@ -253,8 +265,6 @@ def run_parallel_ray(
             fn,
             *args,
             scheduling_strategy=scheduling_strategy,
-            num_cpus=resources.cpu,
-            num_gpus=resources.gpu,
             max_retries=max_retries,
             retry_exceptions=retry_exceptions,
             **kwargs,
@@ -262,8 +272,6 @@ def run_parallel_ray(
     else:
         return _run_parallel_ray_executor.options(
             scheduling_strategy=scheduling_strategy,
-            num_cpus=resources.cpu,
-            num_gpus=resources.gpu,
             max_retries=max_retries,
             retry_exceptions=retry_exceptions,
         ).remote(fn, *args, **kwargs)
@@ -314,18 +322,20 @@ class RayInitConfig(UserEnteredParameters):
 
 
 class RayResources(UserEnteredParameters):
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(
+        extra="ignore",
+    )
 
-    cpu: Union[conint(ge=0), confloat(ge=0.0, lt=1.0)] = 1
-    gpu: Union[conint(ge=0), confloat(ge=0.0, lt=1.0)] = 0
+    num_cpus: Union[conint(ge=0), confloat(ge=0.0, lt=1.0)] = 1
+    num_gpus: Union[conint(ge=0), confloat(ge=0.0, lt=1.0)] = 0
 
     @model_validator(mode="before")
     @classmethod
     def _validate_params(cls, params: dict):
-        Alias.set_cpu(params)
-        Alias.set_gpu(params)
-
-        for resource_name, resource_requirement in params.items():
+        Alias.set_num_cpus(params)
+        Alias.set_num_gpus(params)
+        resource_requirements: Dict = remove_nulls(filter_keys(params, ("num_cpus", "num_gpus")))
+        for resource_name, resource_requirement in resource_requirements.items():
             if resource_requirement > 1.0 and round(resource_requirement) != resource_requirement:
                 raise ValueError(
                     f"When specifying `resources_per_model`, fractional resource-requirements are allowed "

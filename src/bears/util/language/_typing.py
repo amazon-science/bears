@@ -450,6 +450,8 @@ class Parameters(BaseModel, ABC):
             raise ValueError(
                 f"Cannot create Pydantic instance of type '{self.class_name}', "
                 f"encountered following validation errors: {errors_str}"
+                f"\nInputs to '{self.class_name}' constructor are {tuple(kwargs.keys())}:"
+                f"\n{String.pretty(kwargs)}"
             )
 
         except Exception as e:
@@ -457,6 +459,8 @@ class Parameters(BaseModel, ABC):
             raise ValueError(
                 f"Cannot create Pydantic instance of type '{self.class_name}', "
                 f"encountered exception:\n{error_msg}"
+                f"\nInputs to '{self.class_name}' constructor are {tuple(kwargs.keys())}:"
+                f"\n{String.pretty(kwargs)}"
             )
 
     @classproperty

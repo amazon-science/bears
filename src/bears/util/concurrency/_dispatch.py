@@ -8,7 +8,7 @@ from typing import Any, Callable, Dict, Generator, Iterator, List, Optional, Set
 
 import numpy as np
 import pandas as pd
-from pydantic import ConfigDict, model_validator
+from pydantic import ConfigDict, confloat, conint, model_validator
 
 from bears.constants import Parallelize
 from bears.util.language import (
@@ -16,10 +16,11 @@ from bears.util.language import (
     Parameters,
     ProgressBar,
     as_tuple,
-    filter_kwargs,
+    filter_keys,
     get_default,
     is_dict_like,
     is_list_or_set_like,
+    remove_nulls,
     type_str,
 )
 
@@ -92,6 +93,8 @@ class ExecutorConfig(Parameters):
     parallelize: Parallelize
     max_workers: Optional[int] = None  ## None lets the executor use system-appropriate defaults
     max_calls_per_second: float = float("inf")  ## No rate limiting by default
+    num_cpus: Optional[Union[conint(ge=1), confloat(ge=0.0, lt=1.0)]] = None
+    num_gpus: Optional[Union[conint(ge=1), confloat(ge=0.0, lt=1.0)]] = None
 
     @model_validator(mode="before")
     @classmethod
@@ -101,6 +104,17 @@ class ExecutorConfig(Parameters):
         Set various aliases of 'max_workers' for compatibility.
         """
         Alias.set_num_workers(params, param="max_workers")
+        Alias.set_num_cpus(params)
+        Alias.set_num_gpus(params)
+        resource_requirements: Dict = remove_nulls(filter_keys(params, ("num_cpus", "num_gpus")))
+        for resource_name, resource_requirement in resource_requirements.items():
+            if resource_requirement > 1.0 and round(resource_requirement) != resource_requirement:
+                raise ValueError(
+                    f"When specifying `resources_per_model`, fractional resource-requirements are allowed "
+                    f"only when specifying a value <1.0; found fractional resource-requirement "
+                    f'"{resource_name}"={resource_requirement}. To fix this error, set an integer value for '
+                    f'"{resource_name}" in `resources_per_model`.'
+                )
         return params
 
 
@@ -189,6 +203,8 @@ def dispatch_executor(
         ## Ray executor for distributed execution across multiple machines
         return RayPoolExecutor(
             max_workers=config.max_workers,
+            num_cpus=config.num_cpus,
+            num_gpus=config.num_gpus,
         )
     else:
         raise NotImplementedError(
@@ -236,12 +252,11 @@ def map_reduce(
     *args,
     fn: Callable,
     parallelize: Parallelize,
-    forward_parallelize: bool = False,
     item_wait: Optional[float] = None,
     iter_wait: Optional[float] = None,
     iter: bool = False,
     reduce_fn: Optional[Callable] = None,
-    worker_queue_len: Optional[int] = 5,
+    worker_queue_len: Optional[int] = 3,
     **kwargs,
 ) -> Optional[Union[Any, Generator]]:
     """
@@ -319,19 +334,15 @@ def map_reduce(
         >>> ))
         >>> 374453878
     """
-    # Convert string parallelization strategy to enum
-    parallelize: Parallelize = Parallelize(parallelize)
-
     # Process batch_size aliases (nrows, chunk_size, etc.)
     Alias.set_num_rows(kwargs)
     batch_size: int = kwargs.get("num_rows", 1)
-    Alias.set_progress_bar(kwargs)
-    progress_bar: Union[Dict, bool] = kwargs.pop("progress_bar", True)
-    if progress_bar is False:
-        progress_bar: Optional[Dict] = None
-    elif progress_bar is True:
-        progress_bar: Optional[Dict] = dict()
-    assert progress_bar is None or isinstance(progress_bar, dict)
+
+    # Process progress bar configuration
+    progress_bar: Optional[Dict] = Alias.get_progress_bar(kwargs)
+
+    # Process executor configuration:
+    executor_config: ExecutorConfig = ExecutorConfig(parallelize=parallelize, **kwargs)
 
     # Set appropriate wait times based on execution strategy
     item_wait: float = get_default(
@@ -342,7 +353,7 @@ def map_reduce(
             Parallelize.threads: _LOCAL_ACCUMULATE_ITEM_WAIT,
             Parallelize.asyncio: 0.0,
             Parallelize.sync: 0.0,
-        }[parallelize],
+        }[executor_config.parallelize],
     )
     iter_wait: float = get_default(
         iter_wait,
@@ -352,12 +363,8 @@ def map_reduce(
             Parallelize.threads: _LOCAL_ACCUMULATE_ITER_WAIT,
             Parallelize.asyncio: 0.0,
             Parallelize.sync: 0.0,
-        }[parallelize],
+        }[executor_config.parallelize],
     )
-
-    # Forward parallelization strategy if requested
-    if forward_parallelize:
-        kwargs["parallelize"] = parallelize
 
     if reduce_fn is not None and iter:
         raise ValueError("Cannot use reduce_fn with iter=True")
@@ -367,12 +374,12 @@ def map_reduce(
         batch_data: List[Any],
         batch_index: int,
         batch_reduce_fn: Optional[Callable],
-        **batch_kwargs,
+        **kwargs,
     ):
         """Process a batch of items with optional delay between items"""
         results = []
         for item in batch_data:
-            result = fn(*as_tuple(item), **batch_kwargs)
+            result = fn(*as_tuple(item))  ## IMPORTANT! Do not pass kwargs here
             results.append(result)
             if item_wait > 0:
                 time.sleep(item_wait)
@@ -400,15 +407,15 @@ def map_reduce(
             total=total_batches,
             desc="Submitting",
             prefer_kwargs=False,
-            unit="item" if batch_size == 1 else "batch",
-            disable=(parallelize is Parallelize.sync),
+            unit="batch",
+            disable=(executor_config.parallelize is Parallelize.sync),
         )
         collect_pbar: ProgressBar = ProgressBar.of(
             progress_bar,
             total=total_batches,
-            desc="Processing" if parallelize is Parallelize.sync else "Collecting",
+            desc="Processing" if executor_config.parallelize is Parallelize.sync else "Collecting",
             prefer_kwargs=False,
-            unit="item" if batch_size == 1 else "batch",
+            unit="batch",
         )
 
         # Create iterator to process in batches
@@ -418,12 +425,9 @@ def map_reduce(
         def yield_results_interspersed():
             # Create appropriate executor based on parallelization strategy
 
-            executor: Optional[Executor] = dispatch_executor(
-                parallelize=parallelize,
-                **kwargs,
-            )
+            executor: Optional[Executor] = dispatch_executor(config=executor_config)
             try:
-                if parallelize in {Parallelize.sync}:
+                if executor_config.parallelize in {Parallelize.sync}:
                     max_pending_futures: int = 1
                 else:
                     max_pending_futures: int = worker_queue_len * executor._max_workers
@@ -446,9 +450,9 @@ def map_reduce(
                             batch_data=batch,
                             batch_index=batch_idx,
                             batch_reduce_fn=reduce_fn,
-                            parallelize=parallelize,
+                            parallelize=executor_config.parallelize,
                             executor=executor,
-                            **filter_kwargs(fn, **kwargs),
+                            **kwargs,
                         )
                         pending_futures.append(fut)
                         batch_idx += 1
