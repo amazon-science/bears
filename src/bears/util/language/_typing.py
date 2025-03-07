@@ -30,7 +30,7 @@ from pydantic import (
     validate_call,
 )
 
-from ._function import call_str_to_params, get_fn_spec, is_function, params_to_call_str
+from ._function import call_str_to_params, is_function, params_to_call_str
 from ._string import NeverFailJsonEncoder, String
 from ._structs import as_list, as_set, is_list_like
 from ._utils import get_default
@@ -65,29 +65,18 @@ class classproperty(property):
         super(classproperty, self).__delete__(type(obj))
 
 
-def safe_validate_arguments(f):
-    try:
-
-        @functools.wraps(f)
-        @validate_call(
-            config={
-                ## Allow population of a field by it's original name and alias (if False, only alias is used)
-                "populate_by_name": True,
-                ## Perform type checking of non-BaseModel types (if False, throws an error)
-                "arbitrary_types_allowed": True,
-            }
-        )
-        def wrapper(*args, **kwargs):
-            return f(*args, **kwargs)
-
-        return wrapper
-    except PydanticSchemaGenerationError as e:
-        raise e
-    except Exception as e:
-        raise ValueError(
-            f"Error creating Pydantic v2 model to validate function '{get_fn_spec(f).resolved_name}':"
-            f"\nEncountered Exception: {String.format_exception_msg(e)}"
-        )
+safe_validate_arguments = functools.partial(
+    validate_call,
+    config=dict(
+        ## Allow population of a field by it's original name and alias (if False, only alias is used)
+        populate_by_name=True,
+        ## Perform type checking of non-BaseModel types (if False, throws an error)
+        arbitrary_types_allowed=True,
+        ## Renamed from validate_all
+        ## https://docs.pydantic.dev/latest/api/config/#pydantic.config.ConfigDict.validate_default
+        validate_default=True,
+    ),
+)
 
 
 def check_isinstance(
