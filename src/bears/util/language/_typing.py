@@ -32,7 +32,7 @@ from pydantic import (
 
 from ._function import call_str_to_params, is_function, params_to_call_str
 from ._string import NeverFailJsonEncoder, String
-from ._structs import as_list, as_set, is_list_like
+from ._structs import as_list, as_set, is_dict_like, is_list_like
 from ._utils import get_default
 
 
@@ -426,21 +426,27 @@ class Parameters(BaseModel, ABC):
         arbitrary_types_allowed=True,
     )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, /, **data: Any):
         try:
-            super().__init__(*args, **kwargs)
+            super().__init__(**data)
         except ValidationError as e:
             errors_str = ""
             for error_i, error in enumerate(e.errors()):
                 assert isinstance(error, dict)
                 error_msg: str = String.prefix_each_line(error.get("msg", ""), prefix="    ").strip()
                 errors_str += f"\n[Error#{error_i + 1}] ValidationError in {error['loc']}: {error_msg}"
-                errors_str += f"\n[Error#{error_i + 1}] Input: {String.pretty(error['input'])}"
+                if is_dict_like(error["input"]):
+                    errors_str += (
+                        f"\n[Error#{error_i + 1}] Input keys: {String.pretty(error['input'].keys())}"
+                    )
+                    errors_str += f"\n[Error#{error_i + 1}] Input values: {String.pretty(error['input'])}"
+                else:
+                    errors_str += f"\n[Error#{error_i + 1}] Input: {String.pretty(error['input'])}"
             raise ValueError(
                 f"Cannot create Pydantic instance of type '{self.class_name}', "
                 f"encountered following validation errors: {errors_str}"
-                f"\nInputs to '{self.class_name}' constructor are {tuple(kwargs.keys())}:"
-                f"\n{String.pretty(kwargs)}"
+                f"\nInputs to '{self.class_name}' constructor are {tuple(data.keys())}:"
+                f"\n{String.pretty(data)}"
             )
 
         except Exception as e:
@@ -448,9 +454,13 @@ class Parameters(BaseModel, ABC):
             raise ValueError(
                 f"Cannot create Pydantic instance of type '{self.class_name}', "
                 f"encountered exception:\n{error_msg}"
-                f"\nInputs to '{self.class_name}' constructor are {tuple(kwargs.keys())}:"
-                f"\n{String.pretty(kwargs)}"
+                f"\nInputs to '{self.class_name}' constructor are {tuple(data.keys())}:"
+                f"\n{String.pretty(data)}"
             )
+
+    @classmethod
+    def of(cls, **kwargs) -> Generic[ParametersSubclass]:
+        return cls(**kwargs)
 
     @classproperty
     def class_name(cls) -> str:
@@ -467,6 +477,7 @@ class Parameters(BaseModel, ABC):
 
     @classmethod
     def set_default_param_values(cls, params: Dict):
+        check_isinstance(params, dict)
         ## Apply default values for fields not present in the input
         for field_name, field in cls.model_fields.items():
             if field_name not in params:

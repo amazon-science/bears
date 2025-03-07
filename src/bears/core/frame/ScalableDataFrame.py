@@ -1291,6 +1291,11 @@ class ScalableDataFrame(Registry, ABC):
             num_rows: int = math.floor(length / num_chunks)
         return num_rows
 
+    def __iter__(self) -> Generator[Dict, None, None]:
+        for row in self.stream(num_rows=1, stream_as=DataLayout.LIST_OF_DICT):
+            assert isinstance(row, ScalableDataFrame)
+            yield row.as_record()
+
     """
     ==============================================================================================
     Implement the Pandas DataFrame API v1.4.2: https://pandas.pydata.org/docs/reference/frame.html

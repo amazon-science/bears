@@ -17,7 +17,9 @@ from bears.util.language import (
     ProgressBar,
     as_tuple,
     filter_keys,
+    filter_kwargs,
     get_default,
+    get_fn_spec,
     is_dict_like,
     is_list_or_set_like,
     remove_nulls,
@@ -251,6 +253,7 @@ def map_reduce(
     struct: Union[List, Tuple, np.ndarray, pd.Series, Set, frozenset, Dict, Iterator],
     *args,
     fn: Callable,
+    fn_kwargs: Optional[Dict] = None,
     parallelize: Parallelize,
     item_wait: Optional[float] = None,
     iter_wait: Optional[float] = None,
@@ -272,7 +275,8 @@ def map_reduce(
         struct: Input data structure to iterate over (list-like, dict-like, or iterator)
         *args: Additional positional args passed to each fn call
         fn: Function to apply to each element in the batch
-        parallelize: Execution strategy (sync, threads, processes, ray, asyncio)
+        fn_kwargs: Keyword args to pass to function. If None, no additional kwargs are passed.
+        parallelize: Parallelization strategy (sync, threads, processes, ray, asyncio)
         batch_size: Number of items to process in each batch (memory management)
         forward_parallelize: If True, passes the parallelize strategy to fn
         item_wait: Delay between processing individual items within a batch
@@ -369,17 +373,22 @@ def map_reduce(
     if reduce_fn is not None and iter:
         raise ValueError("Cannot use reduce_fn with iter=True")
 
+    fn_kwargs: Dict = get_default(fn_kwargs, dict())
+
     # Functions to process batches
     def process_batch(
         batch_data: List[Any],
         batch_index: int,
         batch_reduce_fn: Optional[Callable],
-        **kwargs,
+        fn_batch_kwargs,
     ):
         """Process a batch of items with optional delay between items"""
+        if get_fn_spec(fn).varkwargs_name is None:
+            ## Function signature does not have **kwargs, filter to only those kwargs present in function:
+            fn_batch_kwargs: Dict = filter_kwargs(fn, **fn_batch_kwargs)
         results = []
         for item in batch_data:
-            result = fn(*as_tuple(item))  ## IMPORTANT! Do not pass kwargs here
+            result = fn(*as_tuple(item), **fn_batch_kwargs)
             results.append(result)
             if item_wait > 0:
                 time.sleep(item_wait)
@@ -447,12 +456,12 @@ def map_reduce(
                         # Submit batch for parallel processing
                         fut = dispatch(
                             fn=process_batch,
+                            fn_batch_kwargs=fn_kwargs,
                             batch_data=batch,
                             batch_index=batch_idx,
                             batch_reduce_fn=reduce_fn,
                             parallelize=executor_config.parallelize,
                             executor=executor,
-                            **kwargs,
                         )
                         pending_futures.append(fut)
                         batch_idx += 1
