@@ -264,7 +264,7 @@ class Writer(Parameters, Registry, ABC):
         self,
         s3_path: str,
         data: Any,
-        file_contents: FileContents = None,
+        file_contents: Optional[FileContents] = None,
         overwrite: bool = False,
         log_perf: bool = True,
         raise_error: bool = True,

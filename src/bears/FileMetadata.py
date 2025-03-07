@@ -45,6 +45,8 @@ class FileMetadata(Parameters):
     @model_validator(mode="before")
     @classmethod
     def _set_params(cls, params: Dict):
+        if isinstance(params, str):
+            params: Dict = {"path": params}
         Alias.set_format(params)
         if params.get("path") is None:
             raise ValueError("'path' must be provided.")

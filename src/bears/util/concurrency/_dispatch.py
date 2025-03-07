@@ -17,6 +17,7 @@ from bears.util.language import (
     ProgressBar,
     as_tuple,
     filter_keys,
+    filter_kwargs,
     get_default,
     is_dict_like,
     is_list_or_set_like,
@@ -374,12 +375,13 @@ def map_reduce(
         batch_data: List[Any],
         batch_index: int,
         batch_reduce_fn: Optional[Callable],
-        **kwargs,
+        **batch_kwargs,
     ):
         """Process a batch of items with optional delay between items"""
+        filtered_batch_kwargs: Dict = filter_kwargs(fn, **batch_kwargs)
         results = []
         for item in batch_data:
-            result = fn(*as_tuple(item))  ## IMPORTANT! Do not pass kwargs here
+            result = fn(*as_tuple(item), **filtered_batch_kwargs)
             results.append(result)
             if item_wait > 0:
                 time.sleep(item_wait)
