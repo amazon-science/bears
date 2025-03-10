@@ -452,6 +452,10 @@ class Parameters(BaseModel, ABC):
                 f"\n{String.pretty(kwargs)}"
             )
 
+    @classmethod
+    def of(cls, **kwargs) -> Generic[ParametersSubclass]:
+        return cls(**kwargs)
+
     @classproperty
     def class_name(cls) -> str:
         return str(cls.__name__)  ## Will return the child class name.
