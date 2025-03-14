@@ -112,8 +112,8 @@ class S3Util(Utility):
             return s3.head_object(Bucket=s3_bucket, Key=object_key)
         except Exception as e:
             if log_error:
-                if e.response.get("Error").get("Code") == 404:
-                    Log.error("Bucket %s does not contain key %s" % (s3_bucket, object_key))
+                if str(e.response.get("Error").get("Code")) in {"404", "NoSuchKey"}:
+                    Log.error(f"Bucket {s3_bucket} does not contain key {object_key}")
                 else:
                     Log.error(str(e))
         return None
@@ -266,8 +266,10 @@ class S3Util(Utility):
         cls,
         s3_path: str,
         obj_str: str,
+        *,
         overwrite: bool = True,
         num_attempts: int = 1,
+        wait_for_completion: bool = True,
     ):
         s3_bucket, object_key = cls.s3_path_exploder(s3_path)
         s3 = boto3.client("s3")
@@ -280,8 +282,9 @@ class S3Util(Utility):
                         f"File already exists at {s3_path}, set overwrite=True to overwrite it."
                     )
                 s3.put_object(Body=obj_str, Bucket=s3_bucket, Key=object_key)
-                if cls.s3_object_exists(s3_path) is False:
-                    raise IOError(f"Could not put object at bucket {s3_bucket} and key {object_key}")
+                if wait_for_completion:
+                    waiter = s3.get_waiter("object_exists")
+                    waiter.wait(Bucket=s3_bucket, Key=object_key)
                 return True
             except Exception as e:
                 Log.error(String.format_exception_msg(e))
@@ -297,8 +300,10 @@ class S3Util(Utility):
         cls,
         s3_path: str,
         obj_data: Any,
+        *,
         overwrite: bool = True,
         num_attempts: int = 1,
+        wait_for_completion: bool = True,
     ):
         s3_bucket, object_key = cls.s3_path_exploder(s3_path)
         s3 = boto3.client("s3")
@@ -312,8 +317,9 @@ class S3Util(Utility):
                     )
                 serialized_data = pickle.dumps(obj_data)
                 s3.put_object(Body=serialized_data, Bucket=s3_bucket, Key=object_key)
-                if cls.s3_object_exists(s3_path) is False:
-                    raise IOError(f"Could not put object at bucket {s3_bucket} and key {object_key}")
+                if wait_for_completion:
+                    waiter = s3.get_waiter("object_exists")
+                    waiter.wait(Bucket=s3_bucket, Key=object_key)
                 return True
             except Exception as e:
                 Log.error(String.format_exception_msg(e))

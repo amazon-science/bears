@@ -268,7 +268,7 @@ class Alias(Utility, metaclass=_AliasMeta):
         **kwargs,
     ) -> Optional[Union[Dict, BaseModel]]:
         Alias.set_progress_bar(params, **kwargs)
-        progress_bar: Union[Dict, bool] = params.pop("progress_bar", default_progress_bar)
+        progress_bar: Union[BaseModel, Dict, bool] = params.pop("progress_bar", default_progress_bar)
         if progress_bar is False:
             progress_bar: Optional[Dict] = None
         elif progress_bar is True:

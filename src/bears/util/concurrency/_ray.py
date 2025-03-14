@@ -292,10 +292,13 @@ if _IS_RAY_INSTALLED and _IS_DASK_INSTALLED:
         def _ray_postsubmit_all(self, object_refs, dsk):
             wait(object_refs)
 
+
 def is_ray_actor(obj) -> bool:
     _check_is_ray_installed()
     import ray
+
     return isinstance(obj, ray.actor.ActorHandle)
+
 
 def max_num_resource_actors(
     model_num_resources: Union[conint(ge=0), confloat(ge=0.0, lt=1.0)],

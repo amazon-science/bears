@@ -1,3 +1,4 @@
+import functools
 import io
 from abc import ABC, abstractmethod
 from typing import Any, ClassVar, Dict, List, Optional, Union
@@ -122,10 +123,13 @@ class AssetReader(Reader, ABC):
         file_contents: Optional[FileContents] = None,
         **kwargs,
     ) -> Asset:
-        return retry(
-            self._read_asset,
+        _retry_fn = functools.partial(
+            retry,
             retries=self.retry,
             wait=self.retry_wait,
+        )
+        return _retry_fn(
+            self._read_asset,
             source=source,
             storage=storage,
             file_contents=file_contents,

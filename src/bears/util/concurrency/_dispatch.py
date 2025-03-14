@@ -8,7 +8,7 @@ from typing import Any, Callable, Dict, Generator, Iterator, List, Optional, Set
 
 import numpy as np
 import pandas as pd
-from pydantic import ConfigDict, confloat, conint, model_validator
+from pydantic import ConfigDict, confloat, conint, model_validator, BaseModel
 
 from bears.constants import Parallelize
 from bears.util.language import (
@@ -343,7 +343,14 @@ def map_reduce(
     batch_size: int = kwargs.get("num_rows", 1)
 
     # Process progress bar configuration
-    progress_bar: Optional[Dict] = Alias.get_progress_bar(kwargs)
+    progress_bar: Optional[Union[Dict, BaseModel]] = Alias.get_progress_bar(kwargs)
+    progress_bar_desc: str = ""
+    if progress_bar is not None:
+        if isinstance(progress_bar, BaseModel):
+            progress_bar: Dict = progress_bar.model_dump()
+        assert isinstance(progress_bar, dict)
+        progress_bar_desc: str = progress_bar.get("desc", "")
+        progress_bar: Dict = filter_keys(progress_bar, "desc", how="exclude")
 
     # Process executor configuration:
     executor_config: ExecutorConfig = ExecutorConfig(parallelize=parallelize, **kwargs)
@@ -414,7 +421,7 @@ def map_reduce(
         submit_pbar: ProgressBar = ProgressBar.of(
             progress_bar,
             total=total_batches,
-            desc="Submitting",
+            desc=f"(Submitting) {progress_bar_desc}".strip(),
             prefer_kwargs=False,
             unit="batch",
             disable=(executor_config.parallelize is Parallelize.sync),
@@ -422,7 +429,11 @@ def map_reduce(
         collect_pbar: ProgressBar = ProgressBar.of(
             progress_bar,
             total=total_batches,
-            desc="Processing" if executor_config.parallelize is Parallelize.sync else "Collecting",
+            desc=(
+                f"(Processing) {progress_bar_desc}"
+                if executor_config.parallelize is Parallelize.sync
+                else f"(Collecting) {progress_bar_desc}"
+            ).strip(),
             prefer_kwargs=False,
             unit="batch",
         )

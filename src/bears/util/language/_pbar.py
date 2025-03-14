@@ -119,7 +119,8 @@ class ProgressBar(MutableParameters):
             return progress_bar
         if progress_bar is not None and not isinstance(progress_bar, (bool, dict)):
             raise ValueError(
-                "You must pass `progress_bar` as either a bool, dict or None. None or False disables it."
+                f"You must pass `progress_bar` as either a bool, dict or None (None or False disables it). "
+                f"Found: {type(progress_bar)}"
             )
         if progress_bar is True:
             progress_bar: Optional[Dict] = dict()

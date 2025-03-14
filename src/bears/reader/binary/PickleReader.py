@@ -1,5 +1,6 @@
 import io
 import pickle
+import time
 from typing import List, Optional, Union
 
 from bears.constants import FileContents, FileFormat, MLTypeSchema
@@ -25,12 +26,13 @@ class PickleReader(Reader):
         **kwargs,
     ) -> StructuredBlob:
         error_to_raise: Optional[Exception] = None
-        for _ in range(self.retry):
+        for _ in range(self.retry + 1):
             try:
                 stream.seek(0)
                 return pickle.load(stream)
             except Exception as e:
                 error_to_raise = e
+                time.sleep(self.retry_wait)
         raise error_to_raise
 
     @safe_validate_arguments
@@ -52,7 +54,7 @@ class PickleReader(Reader):
         **kwargs,
     ) -> StructuredBlob:
         error_to_raise: Optional[Exception] = None
-        for _ in range(self.retry):
+        for _ in range(self.retry + 1):
             try:
                 if is_list_like(local_path):
                     if len(local_path) > 1:
@@ -63,6 +65,7 @@ class PickleReader(Reader):
                 )
             except Exception as e:
                 error_to_raise = e
+                time.sleep(self.retry_wait)
         raise error_to_raise
 
     @safe_validate_arguments
@@ -75,7 +78,7 @@ class PickleReader(Reader):
         **kwargs,
     ) -> StructuredBlob:
         error_to_raise: Optional[Exception] = None
-        for _ in range(self.retry):
+        for _ in range(self.retry + 1):
             try:
                 if is_list_like(s3_path):
                     if len(s3_path) > 1:
@@ -86,4 +89,5 @@ class PickleReader(Reader):
                 )
             except Exception as e:
                 error_to_raise = e
+                time.sleep(self.retry_wait)
         raise error_to_raise

@@ -14,6 +14,7 @@ from typing import (
 
 import numpy as np
 from autoenum import AutoEnum, auto
+from pydantic import confloat, conint, validate_call
 
 from bears.constants import Status
 from bears.util.language import Alias, ProgressBar, String, first_item, get_default, type_str
@@ -125,12 +126,21 @@ def wait_if_future(x):
         ray.wait([x])
 
 
+@validate_call(
+    config=dict(
+        ## Perform type checking of non-BaseModel types (if False, throws an error)
+        arbitrary_types_allowed=True,
+        ## Renamed from validate_all
+        ## https://docs.pydantic.dev/latest/api/config/#pydantic.config.ConfigDict.validate_default
+        validate_default=True,
+    )
+)
 def retry(
     fn,
     *args,
-    retries: int = 5,
-    wait: float = 10.0,
-    jitter: float = 0.5,
+    retries: conint(ge=0),
+    wait: confloat(ge=0.0) = 1.0,
+    jitter: confloat(ge=0.0, le=1.0) = 0.5,
     silent: bool = True,
     return_num_failures: bool = False,
     **kwargs,

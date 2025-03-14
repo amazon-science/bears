@@ -1,13 +1,15 @@
+import functools
 import io
 import time
 from abc import ABC, abstractmethod
 from typing import Any, Callable, ClassVar, Dict, List, NoReturn, Optional, Tuple, Type, Union
 
-from pydantic import ConfigDict, model_validator
+from pydantic import ConfigDict, confloat, conint, model_validator
 
 from bears.constants import FILE_FORMAT_TO_FILE_ENDING_MAP, FileContents, FileFormat, Storage
 from bears.FileMetadata import FileMetadata
 from bears.util import (
+    Alias,
     FileSystemUtil,
     Log,
     Parameters,
@@ -17,6 +19,9 @@ from bears.util import (
     classproperty,
     filter_kwargs,
     safe_validate_arguments,
+)
+from bears.util import (
+    retry as retry_fn,
 )
 from bears.util.aws import S3Util
 
@@ -31,12 +36,14 @@ class Writer(Parameters, Registry, ABC):
     - filter_kwargs: whether to filter out (ignore) args in `params` that are not supported by the writer function.
     """
 
+    model_config = ConfigDict(extra="ignore")
+
     ## Ref for homogeneous Tuple typing: https://docs.python.org/3.6/library/typing.html#typing.Tuple
     file_formats: ClassVar[Tuple[FileFormat, ...]]
     file_contents: ClassVar[Tuple[FileContents, ...]]
     streams: ClassVar[Tuple[Type[io.IOBase], ...]]
-
-    model_config = ConfigDict(extra="ignore")
+    retry: conint(ge=0) = 0
+    retry_wait: confloat(ge=0.0) = 1.0
 
     class Params(Parameters):
         """
@@ -53,6 +60,7 @@ class Writer(Parameters, Registry, ABC):
     @model_validator(mode="before")
     @classmethod
     def convert_params(cls, params: Dict):
+        Alias.set_retry(params)
         params["params"] = cls._convert_params(cls.Params, params.get("params"))
         return params
 
@@ -143,7 +151,13 @@ class Writer(Parameters, Registry, ABC):
             if overwrite:
                 stream.seek(0)  ## Write from start of stream, overwriting data currently in stream.
             start_point: int = stream.tell()
-            self._write_stream(
+            _retry_fn = functools.partial(
+                retry_fn,
+                retries=self.retry,
+                wait=self.retry_wait,
+            )
+            _retry_fn(
+                self._write_stream,
                 stream,
                 data,
                 file_contents=file_contents,
@@ -218,8 +232,14 @@ class Writer(Parameters, Registry, ABC):
                 if FileSystemUtil.dir_exists(local_path) and len(FileSystemUtil.list(local_path)) > 0:
                     raise FileExistsError(f'Non-empty folder already exists at path "{local_path}"')
             FileSystemUtil.mkdir_if_does_not_exist(FileSystemUtil.get_dir(local_path))
+            _retry_fn = functools.partial(
+                retry_fn,
+                retries=self.retry,
+                wait=self.retry_wait,
+            )
             written_paths: List[str] = as_list(
-                self._write_local(
+                _retry_fn(
+                    self._write_local,
                     local_path,
                     data,
                     file_contents=file_contents,
@@ -290,9 +310,15 @@ class Writer(Parameters, Registry, ABC):
             self._check_file_contents(file_contents)
             if log_perf:
                 Log.debug(f'Writing file "{s3_path}" using {str(self)}')
+            _retry_fn = functools.partial(
+                retry_fn,
+                retries=self.retry,
+                wait=self.retry_wait,
+            )
             start = time.perf_counter()
             written_s3_paths: List[str] = as_list(
-                self._write_s3(
+                _retry_fn(
+                    self._write_s3,
                     s3_path,
                     data,
                     file_contents=file_contents,

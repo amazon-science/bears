@@ -41,7 +41,7 @@ class Reader(Parameters, Registry, ABC):
     file_formats: ClassVar[Tuple[FileFormat, ...]]
     file_contents: ClassVar[Tuple[FileContents, ...]]
     streams: ClassVar[Tuple[Type[io.IOBase], ...]]
-    retry: conint(ge=0) = 1
+    retry: conint(ge=0) = 0
     retry_wait: confloat(ge=0.0) = 1.0
     shuffled_multi_read: bool = True
 
