@@ -3,17 +3,16 @@ from typing import (
     Optional,
 )
 
-from bears import (
+from bears.constants import DataLayout
+from bears.core import (
     ScalableDataFrame,
     ScalableOrRaw,
     ScalableSeries,
     ScalableSeriesOrRaw,
     is_scalable,
 )
-from bears.util import safe_validate_arguments
-
-from bears.constants import DataLayout
 from bears.processor import DataProcessor
+from bears.util import safe_validate_arguments
 
 
 class Nto1ColumnProcessor(DataProcessor, ABC):

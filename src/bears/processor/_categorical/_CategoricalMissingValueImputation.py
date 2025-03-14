@@ -5,11 +5,11 @@ from typing import (
 )
 
 from autoenum import AutoEnum, auto
-from bears import ScalableSeries
-from bears.util import is_null
 from pydantic import model_validator
 
+from bears.core import ScalableSeries
 from bears.processor import CategoricalInputProcessor, CategoricalOutputProcessor, SingleColumnProcessor
+from bears.util import is_null
 
 
 class CategoricalImputationStrategy(AutoEnum):

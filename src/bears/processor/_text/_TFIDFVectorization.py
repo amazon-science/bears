@@ -2,15 +2,15 @@ from ast import literal_eval
 from typing import Dict, Optional, Union
 
 import numpy as np
-from bears import ScalableSeries
-from bears.util import if_else, is_dict_like
 from pydantic import model_validator
 from scipy.sparse import csr_matrix as SparseCSRMatrix
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from bears.constants import MLType
+from bears.core import ScalableSeries
 from bears.processor import SingleColumnProcessor, TextInputProcessor
 from bears.processor._vector._VectorDensifier import VectorDensifier
+from bears.util import if_else, is_dict_like
 
 
 class TFIDFVectorization(SingleColumnProcessor, TextInputProcessor):

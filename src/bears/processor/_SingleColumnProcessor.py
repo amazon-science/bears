@@ -5,11 +5,10 @@ from typing import (
     Union,
 )
 
-from bears import ScalableSeries, ScalableSeriesRawType
-from bears.util import get_current_fn_name
-
 from bears.constants import DASK_APPLY_OUTPUT_MLTYPE_TO_META_MAP, DataLayout
+from bears.core import ScalableSeries, ScalableSeriesRawType
 from bears.processor import DataProcessor
+from bears.util import get_current_fn_name
 
 
 class SingleColumnProcessor(DataProcessor, ABC):

@@ -12,7 +12,6 @@ import numpy as np
 from autoenum import AutoEnum, auto
 from pydantic import confloat, conint, constr, model_validator
 
-from bears import FileMetadata, ScalableDataFrame, ScalableDataFrameRawType
 from bears.constants import (
     DataLayout,
     FileContents,
@@ -21,6 +20,8 @@ from bears.constants import (
     MLTypeSchema,
     ProcessingMode,
 )
+from bears.core import ScalableDataFrame, ScalableDataFrameRawType
+from bears.FileMetadata import FileMetadata
 from bears.reader import ConfigReader, Reader
 from bears.util import (
     FractionalBool,

@@ -6,15 +6,15 @@ from typing import (
 )
 
 from autoenum import AutoEnum, auto
-from bears import ScalableDataFrame, ScalableSeries
-from bears.util import String, is_list_like, is_null
 from pydantic import constr, model_validator
 
+from bears.core import ScalableDataFrame, ScalableSeries
 from bears.processor import (
     Nto1ColumnProcessor,
     TextInputProcessor,
     TextOutputProcessor,
 )
+from bears.util import String, is_list_like, is_null
 
 
 class ColumnOrder(AutoEnum):

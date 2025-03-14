@@ -9,12 +9,12 @@ from typing import (
 
 import numpy as np
 from autoenum import AutoEnum, auto
-from bears import ScalableDataFrame, ScalableSeries
-from bears.util import as_list, is_null
 from scipy.sparse import csr_matrix as SparseCSRMatrix
 
 from bears.constants import MLType
+from bears.core import ScalableDataFrame, ScalableSeries
 from bears.processor import Nto1ColumnProcessor, VectorAssemblerInputProcessor, VectorOutputProcessor
+from bears.util import as_list, is_null
 
 
 class InvalidBehavior(AutoEnum):

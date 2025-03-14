@@ -130,7 +130,7 @@ class ScalableDataFrame(Registry, ABC):
         data: ScalableOrRaw,
         *,
         layout: Optional[DataLayout] = None,
-        return_ss: bool = False,
+        return_series: bool = False,
         **kwargs,
     ) -> ScalableDataFrame:
         """
@@ -154,7 +154,7 @@ class ScalableDataFrame(Registry, ABC):
                     raise NotImplementedError(f"Cannot infer layout of data with type: {type(data)}.")
                 data: ScalableDataFrame = ScalableDataFrame.get_subclass(detected_layout)(data=data)
         if isinstance(data, ScalableSeries):
-            if return_ss:
+            if return_series:
                 return ScalableSeries.of(data, layout=layout, **kwargs)
             data: ScalableDataFrame = data.to_frame()
         assert isinstance(data, ScalableDataFrame)

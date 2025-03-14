@@ -11,15 +11,15 @@ from typing import (
 
 import numpy as np
 from autoenum import AutoEnum, auto
-from bears import ScalableSeries, ScalableSeriesRawType
-from bears.util import is_null, type_str
 from pydantic import model_validator
 
+from bears.core import ScalableSeries, ScalableSeriesRawType
 from bears.processor import (
     EncodedLabelOutputProcessor,
     SingleColumnProcessor,
     TextOrLabelInputProcessor,
 )
+from bears.util import is_null, type_str
 
 
 class EncodingRange(AutoEnum):
