@@ -292,6 +292,10 @@ if _IS_RAY_INSTALLED and _IS_DASK_INSTALLED:
         def _ray_postsubmit_all(self, object_refs, dsk):
             wait(object_refs)
 
+def is_ray_actor(obj) -> bool:
+    _check_is_ray_installed()
+    import ray
+    return isinstance(obj, ray.actor.ActorHandle)
 
 def max_num_resource_actors(
     model_num_resources: Union[conint(ge=0), confloat(ge=0.0, lt=1.0)],
@@ -356,12 +360,14 @@ class RayActorComposite(Parameters):
     request_counter: Any
 
     def kill(self):
-        get_result(ray.kill(self.actor), wait=_RAY_ACCUMULATE_ITER_WAIT)
-        get_result(ray.kill(self.request_counter), wait=_RAY_ACCUMULATE_ITER_WAIT)
-        actor: ray.actor.ActorHandle = self.actor
-        request_counter: ray.actor.ActorHandle = self.request_counter
-        del actor
-        del request_counter
+        if is_ray_actor(self.actor):
+            get_result(ray.kill(self.actor), wait=_RAY_ACCUMULATE_ITER_WAIT)
+            actor: ray.actor.ActorHandle = self.actor
+            del actor
+        if self.request_counter is not None:
+            get_result(ray.kill(self.request_counter), wait=_RAY_ACCUMULATE_ITER_WAIT)
+            request_counter: ray.actor.ActorHandle = self.request_counter
+            del request_counter
 
     @classmethod
     def create_actors(
