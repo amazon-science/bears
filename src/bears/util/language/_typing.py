@@ -33,7 +33,7 @@ from pydantic import (
 from ._function import call_str_to_params, is_function, params_to_call_str
 from ._string import NeverFailJsonEncoder, String
 from ._structs import as_list, as_set, is_dict_like, is_list_like
-from ._utils import get_default
+from ._language_utils import get_default
 
 
 def type_str(data: Any) -> str:

@@ -35,7 +35,7 @@ from bears.util.language._import import (
     _check_is_ray_installed,
 )
 
-from ._utils import (
+from ._concurrency_utils import (
     _RAY_ACCUMULATE_ITEM_WAIT,
     _RAY_ACCUMULATE_ITER_WAIT,
     get_result,

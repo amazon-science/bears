@@ -10,7 +10,7 @@ from pydantic import confloat, conint
 from ._import import np_bool, np_floating, np_integer, np_str, optional_dependency
 from ._structs import as_list, as_set, flatten1d, is_dict_like, is_list_like, is_set_like, is_sorted
 from ._typing import type_str
-from ._utils import get_default, is_null, is_scalar
+from ._language_utils import get_default, is_null, is_scalar
 
 FractionalBool = Union[confloat(ge=0.0, le=1.0), bool]
 SampleSizeType = Union[confloat(gt=0.0, le=1.0), conint(gt=1)]

@@ -1,10 +1,13 @@
 import os
 from typing import ClassVar, List, Optional
 
-from bears.util.language import String, Utility, get_default
+from bears.util.language import String, get_default
 
 
-class EnvUtil(Utility):
+class EnvUtil:
+    def __init__(self):
+        raise TypeError(f'Cannot instantiate utility class "{str(self.__class__)}"')
+
     ## KEY
     PROCESSING_JOB_NAME: ClassVar[str] = "PROCESSING_JOB_NAME"
     SNS_TOPIC: ClassVar[str] = "SNS_TOPIC_ARN"

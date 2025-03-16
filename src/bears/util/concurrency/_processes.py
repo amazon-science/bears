@@ -20,7 +20,7 @@ import cloudpickle
 
 from bears.constants import Status
 
-from ._utils import LoadBalancingStrategy
+from ._concurrency_utils import LoadBalancingStrategy
 
 
 def actor_process_main(cls_bytes, init_args, init_kwargs, command_queue, result_queue):

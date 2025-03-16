@@ -11,7 +11,7 @@ from typing import (
 
 from pydantic import BaseModel
 
-from ._utils import Utility, get_default
+from ._language_utils import get_default
 
 
 def set_param_from_alias(
@@ -69,7 +69,10 @@ class _AliasMeta(type):
         raise AttributeError(f"`{attr_name}` is not an attribute of {cls.__name__}.")
 
 
-class Alias(Utility, metaclass=_AliasMeta):
+class Alias(metaclass=_AliasMeta):
+    def __init__(self):
+        raise TypeError(f'Cannot instantiate utility class "{str(self.__class__)}"')
+
     @classmethod
     def set_AlgorithmClass(cls, params: Dict, param: str = "AlgorithmClass", **kwargs):
         set_param_from_alias(params, param=param, alias=["algo", "algorithm", "AlgorithmClass"], **kwargs)
@@ -81,6 +84,10 @@ class Alias(Utility, metaclass=_AliasMeta):
     @classmethod
     def set_region_name(cls, params: Dict, param: str = "region_name", **kwargs):
         set_param_from_alias(params, param=param, alias=["region_name", "region", "aws_region"], **kwargs)
+
+    @classmethod
+    def set_role_arn(cls, params: Dict, param: str = "role_arn", **kwargs):
+        set_param_from_alias(params, param=param, alias=["role_arn", "role", "iam_role"], **kwargs)
 
     @classmethod
     def set_data_schema(cls, params: Dict, param: str = "data_schema", **kwargs):
@@ -158,29 +165,43 @@ class Alias(Utility, metaclass=_AliasMeta):
             params,
             param=param,
             alias=[
-                "max_workers",
                 "map_num_workers",
+                ## Worker-based aliases:
+                "max_num_workers",
+                "max_workers",
                 "num_workers",
                 "n_workers",
                 "workers",
                 ## Process-based aliases:
+                "max_num_processes",
+                "max_processes",
                 "num_processes",
                 "n_processes",
                 "processes",
+                "max_num_process",
+                "max_process",
                 "num_process",
                 "n_process",
+                "max_num_procs",
+                "max_procs",
                 "num_procs",
                 "n_procs",
                 "nprocs",
                 "procs",
+                "max_num_proc",
+                "max_proc",
                 "num_proc",
                 "n_proc",
                 "nproc",
                 "proc",
+                "max_num_jobs",
+                "max_jobs",
                 "num_jobs",
                 "n_jobs",
                 "njobs",
                 "jobs",
+                "max_num_job",
+                "max_job",
                 "num_job",
                 "n_job",
                 "njob",
@@ -188,6 +209,18 @@ class Alias(Utility, metaclass=_AliasMeta):
                 "num_threads",
                 "n_threads",
                 "threads",
+                ## Model-based aliases:
+                "max_num_models",
+                "max_models",
+                "num_models",
+                "n_models",
+                "models",
+                ## Actor-based aliases:
+                "max_num_actors",
+                "max_actors",
+                "num_actors",
+                "n_actors",
+                "actors",
             ],
             **kwargs,
         )

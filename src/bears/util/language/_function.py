@@ -9,7 +9,7 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from ._utils import get_default
+from ._language_utils import get_default
 
 
 def fn_str(fn):

@@ -3,6 +3,7 @@ from concurrent.futures import wait as wait_future
 from concurrent.futures._base import Future
 from typing import (
     Any,
+    Callable,
     Dict,
     List,
     NoReturn,
@@ -18,6 +19,7 @@ from pydantic import confloat, conint, validate_call
 
 from bears.constants import Status
 from bears.util.language import Alias, ProgressBar, String, first_item, get_default, type_str
+from bears.util.language._function import filter_kwargs
 from bears.util.language._import import _IS_RAY_INSTALLED
 
 if _IS_RAY_INSTALLED:
@@ -28,6 +30,16 @@ _RAY_ACCUMULATE_ITEM_WAIT: float = 10e-3  ## 10ms
 
 _LOCAL_ACCUMULATE_ITER_WAIT: float = 100e-3  ## 100ms
 _RAY_ACCUMULATE_ITER_WAIT: float = 1000e-3  ## 1000ms
+
+
+class DataLoadingStrategy(AutoEnum):
+    LOCAL = auto()
+    DASK = auto()
+
+
+class ShardingStrategy(AutoEnum):
+    COARSE = auto()
+    GRANULAR = auto()
 
 
 class LoadBalancingStrategy(AutoEnum):
@@ -143,6 +155,7 @@ def retry(
     jitter: confloat(ge=0.0, le=1.0) = 0.5,
     silent: bool = True,
     return_num_failures: bool = False,
+    error_handler: Optional[Callable] = None,
     **kwargs,
 ) -> Union[Any, Tuple[Any, int]]:
     """
@@ -164,6 +177,7 @@ def retry(
     wait: float = float(wait)
     latest_exception = None
     num_failures: int = 0
+    recoverable: bool = True
     for retry_num in range(retries + 1):
         try:
             out = fn(*args, **kwargs)
@@ -172,18 +186,34 @@ def retry(
             else:
                 return out
         except Exception as e:
+            if error_handler is not None:
+                error_handler_kw: Dict = filter_kwargs(
+                    error_handler,
+                    **dict(
+                        retry_num=retry_num,
+                        retries=retries,
+                        silent=silent,
+                    ),
+                )
+                recoverable: bool = get_default(error_handler(e, **error_handler_kw), True)
             num_failures += 1
-            latest_exception = String.format_exception_msg(e)
+            latest_exception = String.prefix_each_line(String.format_exception_msg(e), prefix="    ")
             if not silent:
                 print(
                     f"Function call failed with the following exception (attempts: {retry_num + 1}):\n{latest_exception}"
                 )
                 if retry_num < (retries - 1):
                     print(f"Retrying {retries - (retry_num + 1)} more time(s)...\n")
+            if not recoverable:
+                break  ## Throw an exception immediately.
             time.sleep(np.random.uniform(wait - wait * jitter, wait + wait * jitter))
-    raise RuntimeError(
-        f"Function call failed {retries + 1} time(s).\nLatest exception:\n{latest_exception}\n"
-    )
+
+    error_msg: str = f"Function call failed {num_failures} time(s)"
+    if not recoverable:
+        error_msg += f" due to an unrecoverable error:\n{latest_exception}\n"
+    else:
+        error_msg += f". \nLatest error:\n{latest_exception}\n"
+    raise RuntimeError(error_msg)
 
 
 def wait(

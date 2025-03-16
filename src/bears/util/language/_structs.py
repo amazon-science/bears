@@ -25,7 +25,7 @@ from autoenum import AutoEnum
 
 from ._alias import set_param_from_alias
 from ._import import np_bool, optional_dependency
-from ._utils import get_default, is_not_null
+from ._language_utils import get_default, is_not_null
 
 ListOrTuple = Union[List, Tuple]
 DataFrameOrSeries = Union[pd.Series, pd.DataFrame]

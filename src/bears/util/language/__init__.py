@@ -1,3 +1,4 @@
+from bears.util.language._language_utils import *
 from bears.util.language._alias import *
 from bears.util.language._function import *
 from bears.util.language._import import *
@@ -10,4 +11,3 @@ from bears.util.language._audio import *
 from bears.util.language._structs import *
 from bears.util.language._testing import *
 from bears.util.language._typing import *
-from bears.util.language._utils import *

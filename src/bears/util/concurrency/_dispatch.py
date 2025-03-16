@@ -35,7 +35,7 @@ from ._threads import (
     run_concurrent,
     suppress_ThreadKilledSystemException,
 )
-from ._utils import (
+from ._concurrency_utils import (
     _LOCAL_ACCUMULATE_ITEM_WAIT,
     _LOCAL_ACCUMULATE_ITER_WAIT,
     _RAY_ACCUMULATE_ITEM_WAIT,
