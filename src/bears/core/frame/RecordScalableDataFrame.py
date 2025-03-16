@@ -229,7 +229,7 @@ class RecordScalableDataFrame(ScalableDataFrame):
         seed: Optional[int] = None,
         map: Optional[Callable] = None,
         map_kwargs: Optional[Dict] = None,
-        num_workers: conint(ge=1) = 1,
+        max_workers: conint(ge=1) = 1,
         parallelize: Parallelize = Parallelize.sync,
         map_executor: Literal["spawn"] = "spawn",
         shard: Tuple[conint(ge=0), conint(ge=1)] = (0, 1),

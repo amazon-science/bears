@@ -9,6 +9,8 @@ from typing import (
     Optional,
 )
 
+from ._dispatch import stop_executor
+
 
 def daemon(wait: float, exit_on_error: bool = False, sentinel: Optional[List] = None, **kwargs):
     """
@@ -68,7 +70,7 @@ def daemon(wait: float, exit_on_error: bool = False, sentinel: Optional[List] = 
                 end = time.perf_counter()
                 time_to_wait: float = max(0.0, wait - (end - start))
                 time.sleep(time_to_wait)
-            del executor  ## Cleans up the daemon after it finishes running.
+            stop_executor(executor)  ## Cleans up the daemon after it finishes running.
 
         if sentinel is not None:
             if not isinstance(sentinel, list) or len(sentinel) != 1:

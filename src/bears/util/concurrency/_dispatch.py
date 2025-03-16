@@ -105,7 +105,7 @@ class ExecutorConfig(Parameters):
         Pre-processes configuration parameters to support alternate parameter names.
         Set various aliases of 'max_workers' for compatibility.
         """
-        Alias.set_num_workers(params, param="max_workers")
+        Alias.set_max_workers(params)
         Alias.set_num_cpus(params)
         Alias.set_num_gpus(params)
         resource_requirements: Dict = remove_nulls(filter_keys(params, ("num_cpus", "num_gpus")))

@@ -11,6 +11,50 @@ from bears.util import accumulate, run_concurrent
 
 
 class ScalableDataFrameDataset(IterableDataset):
+    """
+    An iterable PyTorch dataset implementation for ScalableDataFrame that supports streaming data in batches.
+
+    This dataset enables efficient processing of large dataframes by streaming data and optionally fetching
+    assets (like images) on-the-fly. It provides integration with PyTorch's data loading utilities while
+    handling the specifics of ScalableDataFrame.
+
+    Note: Currently only supports single-process loading. Multi-worker support is planned for future releases.
+
+    Example usage:
+        >>> from torch.utils.data import DataLoader
+        >>> import pandas as pd
+        >>> from bears.constants import DataLayout
+        >>> from bears.core.frame import ScalableDataFrame
+        >>>
+        >>> # Create a sample dataframe with image paths
+        >>> df_small = pd.DataFrame({
+        >>>     "img": ["path/to/image1.jpg", "path/to/image2.jpg"],
+        >>>     "label": [0, 1]
+        >>> })
+        >>>
+        >>> # Create the dataset
+        >>> dataset = ScalableDataFrameDataset(
+        >>>     ScalableDataFrame.of(df_small),
+        >>>     batch_size=100,
+        >>>     schema={"img": "image", "label": "int"},  ## Schema defines column types
+        >>>     layout=DataLayout.DICT,  ## Choose between DICT or LIST_OF_DICT
+        >>>     fetch_assets=True,  ## Set to True to load images automatically
+        >>>     shuffle=True,  ## Whether to shuffle data during iteration
+        >>> )
+        >>>
+        >>> # Create a PyTorch DataLoader (note: batch_size=None as batching is handled by the dataset)
+        >>> data_loader = DataLoader(
+        >>>     dataset,
+        >>>     max_workers=0,  ## Must be 0 until multi-worker support is added
+        >>>     batch_size=None,
+        >>> )
+        >>>
+        >>> # Iterate through batches
+        >>> for batch_i, batch_sdf in enumerate(data_loader):
+        >>>     images = batch_sdf._data["img"]  ## Access loaded image tensors
+        >>>     labels = batch_sdf._data["label"]
+    """
+
     def __init__(
         self,
         sdf: ScalableDataFrame,
@@ -69,24 +113,3 @@ class ScalableDataFrameDataset(IterableDataset):
             raise NotImplementedError("Cannot handle multi-process sdf loading yet")
         ## Single-process sdf loading, return the full iterator
         return self.fetch_data_and_yield()
-
-
-"""
-## Usage:
-dataset = ScalableDataFrameDataset(
-    ScalableDataFrame.of(df_small),
-    batch_size=100,
-    schema={},
-    layout=DataLayout.LIST_OF_DICT,
-    fetch_assets=True,
-    shuffle=True,
-)
-data_loader = DataLoader(
-    dataset, 
-    num_workers=0, 
-    batch_size=None,
-)
-
-for batch_i, batch_sdf in enumerate(data_loader):
-    pass
-"""

@@ -254,7 +254,7 @@ if _IS_DASK_INSTALLED:
             shuffle: bool = False,
             seed: Optional[int] = None,
             map: Optional[Callable] = None,
-            num_workers: conint(ge=1) = 1,
+            max_workers: conint(ge=1) = 1,
             parallelize: Parallelize = Parallelize.sync,
             map_failure: Literal["raise", "drop"] = "raise",
             map_executor: Literal["spawn"] = "spawn",
@@ -278,7 +278,7 @@ if _IS_DASK_INSTALLED:
                 executor: Optional[Executor] = self._stream_get_executor(
                     map=map,
                     parallelize=parallelize,
-                    num_workers=num_workers,
+                    max_workers=max_workers,
                     map_executor=map_executor,
                 )
                 num_batches_per_shard: Optional[int] = None
@@ -368,7 +368,7 @@ if _IS_DASK_INSTALLED:
                                 map=map,
                                 map_kwargs=map_kwargs,
                                 parallelize=parallelize,
-                                num_workers=num_workers,
+                                max_workers=max_workers,
                                 map_failure=map_failure,
                                 stream_as=stream_as,
                                 raw=raw,
@@ -414,7 +414,7 @@ if _IS_DASK_INSTALLED:
                                     map=map,
                                     map_kwargs=map_kwargs,
                                     parallelize=parallelize,
-                                    num_workers=num_workers,
+                                    max_workers=max_workers,
                                     map_failure=map_failure,
                                     stream_as=stream_as,
                                     raw=raw,

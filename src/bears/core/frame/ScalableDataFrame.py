@@ -418,7 +418,7 @@ class ScalableDataFrame(Registry, ABC):
         Alias.set_num_chunks(kwargs)
         Alias.set_seed(kwargs)
         Alias.set_shard_seed(kwargs)
-        Alias.set_num_workers(kwargs)
+        Alias.set_max_workers(kwargs)
         Alias.set_parallelize(kwargs)
         Alias.set_mapper(kwargs, param="map")
         Alias.set_map_executor(kwargs)
@@ -427,12 +427,12 @@ class ScalableDataFrame(Registry, ABC):
         Alias.set_num_shards(kwargs)
 
         if kwargs.get("parallelize") == Parallelize.sync:
-            if kwargs.get("num_workers", 1) != 1:
+            if kwargs.get("max_workers", 1) != 1:
                 warnings.warn(
                     f"When setting parallelize={Parallelize.sync}, we implicitly use only one worker (the main thread). "
-                    f"The entered value of `num_workers` will be ignored."
+                    f"The entered value of `max_workers` will be ignored."
                 )
-            kwargs["num_workers"] = 1
+            kwargs["max_workers"] = 1
 
         if kwargs.get("stream_as") in LAZY_SDF_DATA_LAYOUTS:
             raise AttributeError(
@@ -466,7 +466,7 @@ class ScalableDataFrame(Registry, ABC):
         shuffle: bool = False,
         seed: Optional[int] = None,
         map: Optional[Callable] = None,
-        num_workers: conint(ge=1) = 1,
+        max_workers: conint(ge=1) = 1,
         parallelize: Parallelize = Parallelize.sync,
         map_failure: Literal["raise", "drop"] = "raise",
         map_executor: Literal["spawn"] = "spawn",
@@ -492,7 +492,7 @@ class ScalableDataFrame(Registry, ABC):
             Processing can be both CPU and IO intensive: an example is reading image data from disk/S3 and converting
             it to a PyTorch tensor. The input and output of this callabe should be a ScalableDataFrame.
         :param map_kwargs: keyword arguments to pass to the processing function.
-        :param num_workers: when passing `map`, this determines how many chunks to map simultaneously.
+        :param max_workers: when passing `map`, this determines how many chunks to map simultaneously.
         :param parallelize: when passing `map`, this controls how mapping of chunks is parallelized, e.g. via
             threads, processes, Ray, etc.
         :param map_executor: how to handle the executor:
@@ -530,7 +530,7 @@ class ScalableDataFrame(Registry, ABC):
             executor: Optional[Executor] = self._stream_get_executor(
                 map=map,
                 parallelize=parallelize,
-                num_workers=num_workers,
+                max_workers=max_workers,
                 map_executor=map_executor,
             )
 
@@ -570,7 +570,7 @@ class ScalableDataFrame(Registry, ABC):
                     map=map,
                     map_kwargs=map_kwargs,
                     parallelize=parallelize,
-                    num_workers=num_workers,
+                    max_workers=max_workers,
                     map_failure=map_failure,
                     stream_as=stream_as,
                     raw=raw,
@@ -1158,7 +1158,7 @@ class ScalableDataFrame(Registry, ABC):
         cls,
         map: Callable,
         parallelize: Parallelize,
-        num_workers: conint(ge=1),
+        max_workers: conint(ge=1),
         map_executor: Literal["spawn"],
     ) -> Optional[Executor]:
         if map is not None:
@@ -1166,7 +1166,7 @@ class ScalableDataFrame(Registry, ABC):
                 assert map_executor == "spawn"
             return dispatch_executor(
                 parallelize=parallelize,
-                max_workers=num_workers,
+                max_workers=max_workers,
             )
         return None
 
@@ -1188,7 +1188,7 @@ class ScalableDataFrame(Registry, ABC):
         map: Optional[Callable],
         map_kwargs: Dict,
         parallelize: Parallelize,
-        num_workers: int,
+        max_workers: int,
         map_failure: Literal["raise", "drop"],
         stream_as: Optional[DataLayout],
         raw: bool,
@@ -1211,7 +1211,7 @@ class ScalableDataFrame(Registry, ABC):
                 parallelize=parallelize,
                 executor=executor,
             )
-            if len(mapped_sdf_chunks) > num_workers or (
+            if len(mapped_sdf_chunks) > max_workers or (
                 len(mapped_sdf_chunks) > 0 and is_done(mapped_sdf_chunks[0]["future"])
             ):
                 out_sdf_chunk: Optional[ScalableDataFrame] = cls._stream_dequeue_mapped_chunk(

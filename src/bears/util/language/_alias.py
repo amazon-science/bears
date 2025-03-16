@@ -153,21 +153,41 @@ class Alias(Utility, metaclass=_AliasMeta):
         set_param_from_alias(params, param=param, alias=["mapper_failure", "map_failure"], **kwargs)
 
     @classmethod
-    def set_num_workers(cls, params: Dict, param: str = "num_workers", **kwargs):
+    def set_max_workers(cls, params: Dict, param: str = "max_workers", **kwargs):
         set_param_from_alias(
             params,
             param=param,
             alias=[
-                "num_workers",
                 "max_workers",
+                "map_num_workers",
+                "num_workers",
+                "n_workers",
+                "workers",
+                ## Process-based aliases:
                 "num_processes",
                 "n_processes",
+                "processes",
+                "num_process",
                 "n_process",
+                "num_procs",
+                "n_procs",
+                "nprocs",
+                "procs",
+                "num_proc",
                 "n_proc",
                 "nproc",
+                "proc",
+                "num_jobs",
                 "n_jobs",
                 "njobs",
-                "map_num_workers",
+                "jobs",
+                "num_job",
+                "n_job",
+                "njob",
+                ## Thread-based aliases:
+                "num_threads",
+                "n_threads",
+                "threads",
             ],
             **kwargs,
         )
