@@ -11,11 +11,14 @@ from urllib.parse import ParseResult, urlparse
 import boto3
 
 from bears import _LIBRARY_NAME
-from bears.util import FileSystemUtil, Log, String, Timer, Utility, shuffle_items
+from bears.util import FileSystemUtil, Log, String, Timer, shuffle_items
 from bears.util.language import any_are_none, as_list, remove_values
 
 
-class S3Util(Utility):
+class S3Util:
+    def __init__(self):
+        raise TypeError(f'Cannot instantiate utility class "{str(self.__class__)}"')
+
     S3_BUCKET = "Bucket"
     OBJECT_KEY = "Key"
     ACL = "ACL"

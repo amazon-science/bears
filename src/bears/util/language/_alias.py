@@ -79,6 +79,10 @@ class Alias(Utility, metaclass=_AliasMeta):
         set_param_from_alias(params, param=param, alias=["retries", "num_retries", "retry"], **kwargs)
 
     @classmethod
+    def set_region_name(cls, params: Dict, param: str = "region_name", **kwargs):
+        set_param_from_alias(params, param=param, alias=["region_name", "region", "aws_region"], **kwargs)
+
+    @classmethod
     def set_data_schema(cls, params: Dict, param: str = "data_schema", **kwargs):
         set_param_from_alias(params, param=param, alias=["schema", "dataset_schema", "data_schema"], **kwargs)
 

@@ -745,7 +745,17 @@ class String:
     def convert_case(
         cls,
         s: str,
-        target_case: Literal["snake", "screaming_snake", "kebab", "train", "camel", "pascal", "studly"],
+        target_case: Literal[
+            "upper",
+            "lower",
+            "snake",
+            "screaming_snake",
+            "kebab",
+            "train",
+            "camel",
+            "pascal",
+            "studly",
+        ],
     ) -> list:
         """
         Convert a string from one case format to another.
@@ -780,6 +790,19 @@ class String:
             >>> assert String.convert_case("Test123Case", "snake") == "test_123_case"
             >>> assert String.convert_case("another_test_case", "kebab") == "another-test-case"
         """
+        target_case: str = (
+            target_case.lower()
+            .strip()
+            .replace(" ", "_")
+            .replace("-", "_")
+            .removesuffix("_")
+            .removesuffix("case")
+            .removesuffix("_")
+        )
+        if target_case == "upper":
+            return s.upper()
+        elif target_case == "lower":
+            return s.lower()
         source_case: str = cls.detect_case(s)
         if source_case in ("snake", "screaming_snake"):
             words: List[str] = s.split("_")
