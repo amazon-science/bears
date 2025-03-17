@@ -259,7 +259,7 @@ def map_reduce(
     iter_wait: Optional[float] = None,
     iter: bool = False,
     reduce_fn: Optional[Callable] = None,
-    worker_queue_len: Optional[int] = 3,
+    worker_queue_len: Optional[int] = 1,
     **kwargs,
 ) -> Optional[Union[Any, Generator]]:
     """

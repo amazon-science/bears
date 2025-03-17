@@ -49,8 +49,8 @@ def actor_process_main(cls_bytes, init_args, init_kwargs, command_queue, result_
 
 
 class ActorProxy:
-    def __init__(self, cls, init_args, init_kwargs, mp_context: Literal["fork", "spawn"]):
-        assert mp_context in {"fork", "spawn"}
+    def __init__(self, cls, init_args, init_kwargs, mp_context: Literal["fork", "spawn", "forkserver"]):
+        assert mp_context in {"fork", "spawn", "forkserver"}
         ctx = mp.get_context(mp_context)
 
         self._uuid = str(uuid.uuid4())
@@ -235,7 +235,7 @@ not reinitialized.
 - Library Incompatibilities: Some libraries are not tested or guaranteed to work correctly in forked children. They
 might rely on internal threading, which can break post-fork.
 """
-_DEFAULT_ACTOR_PROCESS_CREATION_METHOD: Literal["fork", "spawn"] = "fork"
+_DEFAULT_ACTOR_PROCESS_CREATION_METHOD: Literal["fork", "spawn", "forkserver"] = "fork"
 
 
 class Actor:
@@ -243,7 +243,7 @@ class Actor:
     def remote(
         cls,
         *args,
-        mp_context: Literal["fork", "spawn"] = _DEFAULT_ACTOR_PROCESS_CREATION_METHOD,
+        mp_context: Literal["fork", "spawn", "forkserver"] = _DEFAULT_ACTOR_PROCESS_CREATION_METHOD,
         **kwargs,
     ):
         return ActorProxy(
@@ -269,11 +269,12 @@ def actor(cls, mp_context: Literal["fork", "spawn"] = _DEFAULT_ACTOR_PROCESS_CRE
     """
 
     def remote(*args, **kwargs):
+        _mp_context = kwargs.pop("mp_context", mp_context)
         return ActorProxy(
             cls,
             init_args=args,
             init_kwargs=kwargs,
-            mp_context=mp_context,
+            mp_context=_mp_context,
         )
 
     def options(cls, *args, **kwargs):
