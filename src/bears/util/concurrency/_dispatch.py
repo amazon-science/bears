@@ -8,7 +8,7 @@ from typing import Any, Callable, Dict, Generator, Iterator, List, Optional, Set
 
 import numpy as np
 import pandas as pd
-from pydantic import ConfigDict, confloat, conint, model_validator, BaseModel
+from pydantic import BaseModel, ConfigDict, confloat, conint, model_validator
 
 from bears.constants import Parallelize
 from bears.util.language import (
@@ -27,6 +27,14 @@ from bears.util.language import (
 )
 
 from ._asyncio import run_asyncio
+from ._concurrency_utils import (
+    _LOCAL_ACCUMULATE_ITEM_WAIT,
+    _LOCAL_ACCUMULATE_ITER_WAIT,
+    _RAY_ACCUMULATE_ITEM_WAIT,
+    _RAY_ACCUMULATE_ITER_WAIT,
+    get_result,
+    is_done_multi,
+)
 from ._processes import ActorPoolExecutor, ActorProxy, run_parallel
 from ._ray import RayPoolExecutor, run_parallel_ray
 from ._threads import (
@@ -34,13 +42,6 @@ from ._threads import (
     kill_thread,
     run_concurrent,
     suppress_ThreadKilledSystemException,
-)
-from ._concurrency_utils import (
-    _LOCAL_ACCUMULATE_ITEM_WAIT,
-    _LOCAL_ACCUMULATE_ITER_WAIT,
-    _RAY_ACCUMULATE_ITEM_WAIT,
-    _RAY_ACCUMULATE_ITER_WAIT,
-    accumulate_iter,
 )
 
 
@@ -259,7 +260,7 @@ def map_reduce(
     iter_wait: Optional[float] = None,
     iter: bool = False,
     reduce_fn: Optional[Callable] = None,
-    worker_queue_len: Optional[int] = 1,
+    worker_queue_len: Optional[int] = 2,
     **kwargs,
 ) -> Optional[Union[Any, Generator]]:
     """
@@ -293,50 +294,95 @@ def map_reduce(
         If reduce_fn is provided: The result of applying reduce_fn to all batch results
 
     Example Usage (parallel map only):
-        >>> def process_query_df(query_id, query_df):
-        >>>     query_df: pd.DataFrame = set_ranks(query_df, sort_col="example_id")
-        >>>     query_df['product_text'] = query_df['product_text'].apply(clean_text)
-        >>>     return query_df['product_text'].apply(len).mean()
-        >>>
-        >>> for mean_query_doc_lens in map_reduce(
-        >>>     retrieval_dataset.groupby("query_id"),
-        >>>     fn=process_query_df,
-        >>>     parallelize='processes',
-        >>>     max_workers=20,
-        >>>     pbar=dict(miniters=1),
-        >>>     batch_size=30,
-        >>>     iter=True,
-        >>> ):
-        >>>     ## Prints the output of each call to process_query_df, which is the mean length of
-        >>>     ## product_text for each query_df:
-        >>>     print(mean_query_doc_lens)
-        >>> 1171.090909090909
-        >>> 1317.7931034482758
-        >>> 2051.945945945946
-        >>> 1249.9375
-        >>> ...
+    >>> def process_query_df(query_id, query_df):
+    >>>     query_df: pd.DataFrame = set_ranks(query_df, sort_col="example_id")
+    >>>     query_df['product_text'] = query_df['product_text'].apply(clean_text)
+    >>>     return query_df['product_text'].apply(len).mean()
+    >>>
+    >>> for mean_query_doc_lens in map_reduce(
+    >>>     retrieval_dataset.groupby("query_id"),
+    >>>     fn=process_query_df,
+    >>>     parallelize='processes',
+    >>>     max_workers=20,
+    >>>     pbar=dict(miniters=1),
+    >>>     batch_size=30,
+    >>>     iter=True,
+    >>> ):
+    >>>     ## Prints the output of each call to process_query_df, which is the mean length of
+    >>>     ## product_text for each query_df:
+    >>>     print(mean_query_doc_lens)
+    >>> 1171.090909090909
+    >>> 1317.7931034482758
+    >>> 2051.945945945946
+    >>> 1249.9375
+    >>> ...
 
     Example Usage (parallel map and reduce):
-        >>> def process_query_df(query_id, query_df):
-        >>>     query_df: pd.DataFrame = set_ranks(query_df, sort_col="example_id")
-        >>>     query_df['product_text'] = query_df['product_text'].apply(clean_text)
-        >>>     return query_df['product_text'].apply(len).sum()
-        >>>
-        >>> def reduce_query_df(l):
-        >>>     ## Applied to every batch of outputs from process_query_df
-        >>>     ## and then again to thr final list of reduced outputs:
-        >>>     return sum(l)
-        >>>
-        >>> print(map_reduce(
-        >>>     retrieval_dataset.groupby("query_id"),
-        >>>     fn=process_query_df,
-        >>>     parallelize='processes',
-        >>>     max_workers=20,
-        >>>     pbar=True,
-        >>>     batch_size=30,
-        >>>     reduce_fn=reduce_query_df,
-        >>> ))
-        >>> 374453878
+    >>> def process_query_df(query_id, query_df):
+    >>>     query_df: pd.DataFrame = set_ranks(query_df, sort_col="example_id")
+    >>>     query_df['product_text'] = query_df['product_text'].apply(clean_text)
+    >>>     return query_df['product_text'].apply(len).sum()
+    >>>
+    >>> def reduce_query_df(l):
+    >>>     ## Applied to every batch of outputs from process_query_df
+    >>>     ## and then again to thr final list of reduced outputs:
+    >>>     return sum(l)
+    >>>
+    >>> print(map_reduce(
+    >>>     retrieval_dataset.groupby("query_id"),
+    >>>     fn=process_query_df,
+    >>>     parallelize='processes',
+    >>>     max_workers=20,
+    >>>     pbar=True,
+    >>>     batch_size=30,
+    >>>     reduce_fn=reduce_query_df,
+    >>> ))
+    >>> 374453878
+
+
+    Example Usage (how to use iter):
+    >>> def do_wait(idx: int) -> int:
+    >>>     if idx % 10 == 0:
+    >>>         time.sleep(10)
+    >>>     else:
+    >>>         time.sleep(1)
+    >>>     return idx
+    >>> ## With iter=False, we collect all results and then return them in order:
+    >>> results = map_reduce(
+    >>>     list(range(50)),
+    >>>     fn=do_wait,
+    >>>     parallelize=Parallelize.threads,
+    >>>     max_workers=10,
+    >>>     iter=False,
+    >>>     worker_queue_len=1,
+    >>>     progress_bar=True,
+    >>> )
+    >>> print(results)   ## [0, 1, 2, ..., 48, 49], in order
+    >>> ## With iter=True, we stream results as they come in:
+    >>> for res in map_reduce(
+    >>>     list(range(50)),
+    >>>     fn=do_wait,
+    >>>     parallelize=Parallelize.threads,
+    >>>     max_workers=10,
+    >>>     iter=True,
+    >>>     worker_queue_len=1,
+    >>>     progress_bar=True,
+    >>> ):
+    >>>     print(res)  ## 1, 2, ... 49, 0, 10, 20, 30, 40
+
+    Example Usage (how worker_queue_len affects execution):
+    >>> ## With iter=False, we collect all results and then return them in order:
+    >>> results = map_reduce(
+    >>>     list(range(50)),
+    >>>     fn=do_wait,
+    >>>     parallelize=Parallelize.threads,
+    >>>     max_workers=10,
+    >>>     iter=False,
+    >>>     worker_queue_len=1000000,  ## No limit on number of pending batches
+    >>>     progress_bar=True,
+    >>> )
+    >>> ## Results are same as before, but now they all get submitted to the executor at once:
+    >>> print(results)   ## [0, 1, 2, ..., 48, 49], in order
     """
     # Process batch_size aliases (nrows, chunk_size, etc.)
     Alias.set_num_rows(kwargs)
@@ -383,25 +429,25 @@ def map_reduce(
     fn_kwargs: Dict = get_default(fn_kwargs, dict())
 
     # Functions to process batches
-    def process_batch(
+    def _process_batch(
         batch_data: List[Any],
-        batch_index: int,
+        batch_idx: int,
         batch_reduce_fn: Optional[Callable],
         fn_batch_kwargs,
-    ):
+    ) -> Union[List[Any], Any]:
         """Process a batch of items with optional delay between items"""
         if get_fn_spec(fn).varkwargs_name is None:
             ## Function signature does not have **kwargs, filter to only those kwargs present in function:
             fn_batch_kwargs: Dict = filter_kwargs(fn, **fn_batch_kwargs)
-        results = []
+        results: List[Any] = []
         for item in batch_data:
-            result = fn(*as_tuple(item), **fn_batch_kwargs)
+            result: Any = fn(*as_tuple(item), **fn_batch_kwargs)
             results.append(result)
             if item_wait > 0:
                 time.sleep(item_wait)
         # If using reduce_fn, collect results for later final reduction
         if batch_reduce_fn is not None:
-            results = batch_reduce_fn(results)
+            results: Any = batch_reduce_fn(results)
         return results
 
     if is_dict_like(struct):
@@ -451,77 +497,111 @@ def map_reduce(
                     max_pending_futures: int = 1
                 else:
                     max_pending_futures: int = worker_queue_len * executor._max_workers
-                batch_idx = 0
-                pending_futures = []
-                completed = False
-                all_results = []
+                batch_idx: int = 0
+                pending_futures: Dict[int, Any] = {}  # Map batch_idx -> future
+                completed: bool = False
+                all_results: List[Any] = []
+
+                ## Store results by batch index to maintain original order when iter=False
+                ordered_batch_results: Dict[int, List[Any]] = {}
 
                 while True:
                     # Submit jobs until we reach max_pending_futures limit or run out of items
                     while len(pending_futures) < max_pending_futures and not completed:
-                        batch = list(itertools.islice(struct_iter, batch_size))
-                        if len(batch) == 0:  # No more items
+                        batch_data: List[Any] = list(itertools.islice(struct_iter, batch_size))
+                        if len(batch_data) == 0:  # No more items
                             completed = True
                             break
 
-                        # Submit batch for parallel processing
+                        # Submit batch_data for parallel processing
                         fut = dispatch(
-                            fn=process_batch,
+                            fn=_process_batch,
                             fn_batch_kwargs=fn_kwargs,
-                            batch_data=batch,
-                            batch_index=batch_idx,
+                            batch_data=batch_data,
+                            batch_idx=batch_idx,
                             batch_reduce_fn=reduce_fn,
                             parallelize=executor_config.parallelize,
                             executor=executor,
                         )
-                        pending_futures.append(fut)
+                        pending_futures[batch_idx] = fut
                         batch_idx += 1
                         submit_pbar.update(1)
 
                     if len(pending_futures) == 0 and completed:
-                        # We're done - no more pending futures and no more batches
+                        ## We're done - no more pending futures and no more batches
                         break
                     else:
-                        # Check for completed futures and yield their results
-                        # Get results from completed futures using accumulate_iter
-                        for batch_result in accumulate_iter(
-                            pending_futures,
-                            item_wait=0,  # No additional wait needed since we're checking each iteration
-                            iter_wait=0,
-                            progress_bar=False,  # We'll update our own progress bar
+                        ## Get the pending futures in order of submission:
+                        pending_futures_list = sorted(pending_futures.items(), key=lambda x: x[0])
+
+                        ## Check which futures have completed:
+                        completion_status: List[bool] = is_done_multi(
+                            [fut for _batch_idx, fut in pending_futures_list]
+                        )
+
+                        ## Yield results from completed futures:
+                        for (_candidate_batch_idx, fut), is_completed in zip(
+                            pending_futures_list, completion_status
                         ):
-                            collect_pbar.update(1)
+                            if is_completed:
+                                ## Get the result from the completed future
+                                batch_result: Any = get_result(fut)
+                                collect_pbar.update(1)
+                                pending_futures.pop(_candidate_batch_idx, None)
 
-                            # Otherwise yield individual results
-                            if reduce_fn is not None:
-                                all_results.append(batch_result)
-                            else:
-                                if is_dict:
-                                    for k, v in batch_result:
-                                        yield k, v
+                                ## Process the result based on the reduction strategy
+                                if reduce_fn is None:
+                                    if iter:
+                                        ## When iter=True, yield results immediately (streaming)
+                                        if is_dict:
+                                            for k, v in batch_result:
+                                                yield k, v
+                                        else:
+                                            for item in batch_result:
+                                                yield item
+                                    else:
+                                        ## When iter=False, store results by batch index for later ordering
+                                        ordered_batch_results[_candidate_batch_idx] = batch_result
                                 else:
-                                    for item in batch_result:
-                                        yield item
-                        pending_futures = []
+                                    all_results.append(batch_result)
 
-                # If we have a reduce function, apply it to all collected results
+                        ## If we still have pending futures, wait a bit before checking again:
+                        if len(pending_futures) > 0:
+                            time.sleep(iter_wait)
+
+                ## If we have a reduce function, apply it to all collected results
                 if reduce_fn is not None:
                     final_result = reduce_fn(all_results)
                     yield final_result
+                elif not iter:
+                    ## When iter=False and no reduce_fn, return results in original order
+                    ## by iterating through ordered_batch_results in batch index order
+                    for batch_idx in sorted(ordered_batch_results.keys()):
+                        batch_result: List[Any] = ordered_batch_results[batch_idx]
+                        if is_dict:
+                            for k, v in batch_result:
+                                yield k, v
+                        else:
+                            for item in batch_result:
+                                yield item
 
                 submit_pbar.success()
                 collect_pbar.success()
             finally:
-                # Ensure executor is properly cleaned up even if processing fails
+                ## Ensure executor is properly cleaned up even if processing fails
                 stop_executor(executor)
 
-        # Return the generator that interleaves submission and collection
+        ## Return the generator that interleaves submission and collection
         gen = yield_results_interspersed()
         if reduce_fn is not None:
             return next(gen)
         if iter:
             return gen
         else:
-            return list(gen)
+            if is_dict:
+                ## Convert back to dictionary
+                return dict(list(gen))
+            else:
+                return list(gen)
     else:
         raise NotImplementedError(f"Unsupported type: {type_str(struct)}")

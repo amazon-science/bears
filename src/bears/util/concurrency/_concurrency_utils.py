@@ -93,6 +93,40 @@ def is_done(x) -> bool:
     return True
 
 
+def is_done_multi(futures: List[Any]) -> List[bool]:
+    """
+    Efficiently checks if multiple futures have completed.
+
+    Args:
+        futures: List of futures to check (Future or ray.ObjectRef)
+
+    Returns:
+        List of booleans indicating completion status for each future
+
+    Example usage:
+        >>> futures = [executor.submit(time.sleep, i) for i in range(3)]
+        >>> completion_status = is_done_multi(futures)
+        >>> print(completion_status)  # [False, False, False]
+    """
+    if len(futures) == 0:
+        return []
+    ## For Ray ObjectRefs, use ray.wait which is more efficient
+    if _IS_RAY_INSTALLED and any([isinstance(fut, ray.ObjectRef) for fut in futures]):
+        completion_map: Dict[int, Optional[bool]] = {
+            id(fut): None if isinstance(fut, ray.ObjectRef) else is_done(fut) for fut in futures
+        }
+        completed_futs, pending_futs = ray.wait(futures, num_returns=len(futures), timeout=0)
+        ## Create a mapping of object refs to their completion status:
+        for fut in completed_futs:
+            completion_map[id(fut)] = True
+        for fut in pending_futs:
+            completion_map[id(fut)] = False
+        return [completion_map[id(fut)] for fut in futures]
+    else:
+        ## Standard concurrent.futures.Future objects:
+        return [is_done(fut) for fut in futures]
+
+
 def is_successful(x, *, pending_returns_false: bool = False) -> Optional[bool]:
     if not is_done(x):
         if pending_returns_false:
