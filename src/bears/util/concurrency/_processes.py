@@ -55,8 +55,8 @@ class ActorProxy:
 
         self._uuid = str(uuid.uuid4())
 
-        self._command_queue = ctx.Queue()
-        self._result_queue = ctx.Queue()
+        self._command_queue: mp.Queue = ctx.Queue()
+        self._result_queue: mp.Queue = ctx.Queue()
         self._num_submitted: int = 0
         self._task_status: Dict[Status, int] = {
             Status.PENDING: 0,
@@ -65,13 +65,13 @@ class ActorProxy:
             Status.FAILED: 0,
         }
 
-        self._futures = {}
+        self._futures: Dict[str, Future] = {}
         self._futures_lock = threading.Lock()
 
         # Create the process using the fork context
         cls_bytes = cloudpickle.dumps(cls)
         self._cls_name = cls.__name__
-        self._process: ctx.Process = ctx.Process(
+        self._process: mp.Process = ctx.Process(
             target=actor_process_main,
             args=(
                 cls_bytes,
@@ -89,33 +89,45 @@ class ActorProxy:
         self._stopped = False
 
         # Now start the asynchronous result handling using a thread:
-        self._result_thread = threading.Thread(target=self._handle_results, daemon=True)
+        self._result_thread: threading.Thread = threading.Thread(target=self._handle_results, daemon=True)
         self._result_thread.start()
 
     def _handle_results(self):
-        while True:
-            if not self._process.is_alive() and self._result_queue.empty():
-                self._task_status[Status.RUNNING] = 0
-                return
+        while not self._stopped:
             try:
-                item = self._result_queue.get(timeout=1)
-            except queue.Empty:
-                self._task_status[Status.RUNNING] = 0
-                continue
-            if item is None:  # Sentinel to stop the results-handling thread.
-                return
-            request_id, status, payload = item
-            with self._futures_lock:
-                future = self._futures.pop(request_id, None)
-            if future is not None:
-                if status == "ok":
-                    future.set_result(payload)
-                    self._task_status[Status.SUCCEEDED] += 1
-                else:
-                    e, tb_str = payload
-                    future.set_exception(RuntimeError(f"Remote call failed:\n{tb_str}"))
-                    self._task_status[Status.FAILED] += 1
-                self._task_status[Status.PENDING] -= 1
+                if not self._process.is_alive() and self._result_queue.empty():
+                    self._task_status[Status.RUNNING] = 0
+                    return
+
+                try:
+                    item = self._result_queue.get(timeout=1)
+                except queue.Empty:
+                    self._task_status[Status.RUNNING] = 0
+                    continue
+                except (ValueError, OSError):
+                    ## Queue was closed or another error occurred
+                    break
+
+                if item is None:  # Sentinel to stop the results-handling thread.
+                    break
+
+                request_id, status, payload = item
+                with self._futures_lock:
+                    future = self._futures.pop(request_id, None)
+                if future is not None:
+                    if status == "ok":
+                        future.set_result(payload)
+                        self._task_status[Status.SUCCEEDED] += 1
+                    else:
+                        e, tb_str = payload
+                        future.set_exception(RuntimeError(f"Remote call failed:\n{tb_str}"))
+                        self._task_status[Status.FAILED] += 1
+                    self._task_status[Status.PENDING] -= 1
+            except Exception:
+                ## Any unexpected exception, exit the thread
+                break
+
+        self._task_status[Status.RUNNING] = 0
 
     def _invoke_sync_initialize(self):
         request_id = self._uuid
@@ -126,21 +138,44 @@ class ActorProxy:
             e, tb_str = payload
             raise RuntimeError(f"Remote init failed:\n{tb_str}")
 
-    def stop(self, timeout: int = 10, cancel_futures: bool = True):
+    def stop(self, timeout: int = 30, cancel_futures: bool = True):
         if self._stopped is True:
             return
         self._stopped = True
-        self._command_queue.put(None)
+        
+        ## Signal the process to stop
+        try:
+            self._command_queue.put(None)
+        except (ValueError, OSError):
+            ## Queue might already be closed
+            pass
+        
+        ## Wait for the process to finish
         self._process.join(timeout=timeout)
-        self._command_queue.close()
-        self._result_queue.close()
-        # Fail any remaining futures
+        
+        ## Signal the result thread to stop before closing queues
+        try:
+            self._result_queue.put(None)  ## Sentinel to stop the results thread
+            self._result_thread.join(timeout=timeout)  ## Give thread time to exit
+        except (ValueError, OSError, AttributeError):
+            ## Queue might already be closed or thread might not exist
+            pass
+        
+        ## Now close the queues
+        try:
+            self._command_queue.close()
+            self._result_queue.close()
+        except (ValueError, OSError, AttributeError):
+            pass
+        
+        ## Fail any remaining futures
         if cancel_futures:
             with self._futures_lock:
                 for fut in self._futures.values():
                     if not fut.done():
                         fut.set_exception(RuntimeError("Actor stopped before completion."))
                 self._futures.clear()
+        
         self._task_status[Status.RUNNING] = 0
 
     def _invoke(self, method_name, *args, **kwargs):
