@@ -10,31 +10,30 @@ authors = [
 ]
 description = ""
 readme = "README.md"
-requires-python = ">=3.11.11"
+requires-python = ">=3.11"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
 license-files = ["LICENSE"]
 dependencies = [
-    "pytest",
-    "autoenum",
-    "requests",
-    "pyyaml",
-    "urllib3",
-    "pandas==2.*",
-    "numpy",
-    "pydantic>=2.10.5",
-    "xlrd",
-    "XlsxWriter",
-    "openpyxl",
-    "fastparquet",
-    "pyarrow",
-    "s3fs",
-    "tqdm",
-    "boto3",
-    "cloudpickle>=3.0.0",
-    "scikit-learn",
+    "autoenum==1.0.2",
+    "boto3==1.36.19",
+    "cloudpickle==3.1.1",
+    "fastparquet==2024.11.0",
+    "numpy==1.26.4",
+    "openpyxl==3.1.5",
+    "pandas==2.2.1",
+    "pyarrow==14.0.2",
+    "pydantic==2.10.6",
+    "pytest==8.3.4",
+    "pyyaml==6.0.2",
+    "requests==2.32.3",
+    "s3fs==0.4.2",
+    "scikit-learn==1.6.1",
+    "tqdm==4.67.1",
+    "urllib3==2.3.0",
+    "xlrd==2.0.1"
 ]
 
 [project.optional-dependencies]
