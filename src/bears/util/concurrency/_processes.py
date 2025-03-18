@@ -1,3 +1,4 @@
+import gc
 import multiprocessing as mp
 import queue
 import random
@@ -5,7 +6,7 @@ import threading
 import traceback
 import uuid
 import warnings
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from concurrent.futures._base import Executor, Future
 from concurrent.futures.process import BrokenProcessPool
 from typing import (
@@ -142,17 +143,17 @@ class ActorProxy:
         if self._stopped is True:
             return
         self._stopped = True
-        
+
         ## Signal the process to stop
         try:
             self._command_queue.put(None)
         except (ValueError, OSError):
             ## Queue might already be closed
             pass
-        
+
         ## Wait for the process to finish
         self._process.join(timeout=timeout)
-        
+
         ## Signal the result thread to stop before closing queues
         try:
             self._result_queue.put(None)  ## Sentinel to stop the results thread
@@ -160,14 +161,14 @@ class ActorProxy:
         except (ValueError, OSError, AttributeError):
             ## Queue might already be closed or thread might not exist
             pass
-        
+
         ## Now close the queues
         try:
             self._command_queue.close()
             self._result_queue.close()
         except (ValueError, OSError, AttributeError):
             pass
-        
+
         ## Fail any remaining futures
         if cancel_futures:
             with self._futures_lock:
@@ -175,7 +176,7 @@ class ActorProxy:
                     if not fut.done():
                         fut.set_exception(RuntimeError("Actor stopped before completion."))
                 self._futures.clear()
-        
+
         self._task_status[Status.RUNNING] = 0
 
     def _invoke(self, method_name, *args, **kwargs):
@@ -352,13 +353,25 @@ class ActorPoolExecutor(Executor):
     ):
         if max_workers is None:
             max_workers = mp.cpu_count() - 1
-        self._actors: List[ActorProxy] = [TaskActor.remote() for _ in range(max_workers)]
+        self._actors: List[ActorProxy] = []
         self._actor_index = 0
         self._max_workers = max_workers
         self._load_balancing_strategy: LoadBalancingStrategy = LoadBalancingStrategy(load_balancing_strategy)
         self._shutdown_lock = threading.Lock()
         self._futures = []
         self._shutdown = False
+
+        ## TODO: fix the spawn creation logic to be faster. Currently, it is super slow
+        ## so we have to use a threadpool to create them.
+
+        actor_creation_executor: ThreadPoolExecutor = ThreadPoolExecutor(
+            max_workers=min(max_workers, 20),
+        )
+        for fut in [actor_creation_executor.submit(TaskActor.remote) for actor_i in range(max_workers)]:
+            self._actors.append(fut.result())
+        actor_creation_executor.shutdown(wait=True)
+        del actor_creation_executor
+        gc.collect()
 
     def submit(self, fn, *args, **kwargs):
         with self._shutdown_lock:
@@ -392,6 +405,11 @@ class ActorPoolExecutor(Executor):
         self._futures = [fut for fut in self._futures if not fut.done()]
 
     def shutdown(self, wait: bool = True, *, cancel_futures: bool = True) -> None:
+        def _stop_actor(actor: ActorProxy):
+            actor.stop(cancel_futures=cancel_futures)
+            del actor
+            gc.collect()
+
         with self._shutdown_lock:
             if self._shutdown:
                 return
@@ -402,9 +420,17 @@ class ActorPoolExecutor(Executor):
             for fut in self._futures:
                 fut.result()  # blocks until future is done or raises
         self._remove_completed_futures()
-        # Stop all actors
-        for actor in self._actors:
-            actor.stop(cancel_futures=cancel_futures)
+        ## Stop all actors
+        ## TODO: fix the spawn stop logic to be faster. Currently, it is super slow
+        ## so we have to use a threadpool to stop them.
+        actor_stop_executor: ThreadPoolExecutor = ThreadPoolExecutor(
+            max_workers=min(len(self._actors), 20),
+        )
+        for fut in [actor_stop_executor.submit(_stop_actor, actor) for actor in self._actors]:
+            fut.result()
+        actor_stop_executor.shutdown(wait=True)
+        del actor_stop_executor
+        gc.collect()
 
     def map(self, fn, *iterables, timeout=None, chunksize=1):
         if chunksize != 1:
