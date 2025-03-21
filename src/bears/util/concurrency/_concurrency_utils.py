@@ -10,6 +10,7 @@ from typing import (
     Optional,
     Set,
     Tuple,
+    Type,
     Union,
 )
 
@@ -18,7 +19,7 @@ from autoenum import AutoEnum, auto
 from pydantic import confloat, conint, validate_call
 
 from bears.constants import Status
-from bears.util.language import Alias, ProgressBar, String, first_item, get_default, type_str
+from bears.util.language import Alias, ProgressBar, String, first_item, get_default, type_str, as_tuple
 from bears.util.language._function import filter_kwargs
 from bears.util.language._import import _IS_RAY_INSTALLED
 
@@ -190,6 +191,7 @@ def retry(
     silent: bool = True,
     return_num_failures: bool = False,
     error_handler: Optional[Callable] = None,
+    retryable_exceptions: Union[Type[Exception], Tuple[Type[Exception], ...]] = (Exception,),
     **kwargs,
 ) -> Union[Any, Tuple[Any, int]]:
     """
@@ -200,15 +202,116 @@ def retry(
     :param jitter: limit of jitter (+-). E.g. jitter=0.1 means we will wait for a random time period in the range
         (0.9 * wait, 1.1 * wait) seconds.
     :param silent: whether to print an error message on each retry.
-    :param kwargs: keyword arguments forwarded to the function.
     :param return_num_failures: whether to return the number of times failed.
+    :param error_handler: Optional callback function to handle exceptions and determine if they are recoverable.
+    :param retryable_exceptions: Exception types to retry on. Defaults to all exceptions (Exception,).
     :return: the function's return value if any call succeeds. If return_num_failures is set, returns this as the second result.
     :raise: RuntimeError if all `retries` calls fail.
+    
+    Example usage:
+        >>> # Basic usage - retrying a function that fails twice then succeeds
+        >>> counter = 0
+        >>> def fails_twice_then_succeeds():
+        ...     global counter
+        ...     counter += 1
+        ...     if counter <= 2:
+        ...         raise ValueError(f"Failing on attempt {counter}")
+        ...     return "success"
+        >>> counter = 0  # Reset counter
+        >>> result = retry(fails_twice_then_succeeds, retries=3, wait=0.01, jitter=0.0)
+        >>> result
+        'success'
+        
+        >>> # Function that always fails, with retries=0
+        >>> def always_fails():
+        ...     raise RuntimeError("Always fails")
+        >>> try:
+        ...     retry(always_fails, retries=0, wait=0.01)
+        ... except RuntimeError as e:
+        ...     print("Got expected error")
+        Got expected error
+        
+        >>> # Return number of failures
+        >>> counter = 0  # Reset counter
+        >>> result, failures = retry(fails_twice_then_succeeds, 
+        ...                          retries=3, wait=0.01, jitter=0.0,
+        ...                          return_num_failures=True)
+        >>> result, failures
+        ('success', 2)
+        
+        >>> # Specific exception handling
+        >>> class MyCustomError(Exception): pass
+        >>> class AnotherError(Exception): pass
+        >>> def raises_custom_error():
+        ...     raise MyCustomError("Custom error")
+        >>> # Only retry on MyCustomError, not other exceptions
+        >>> try:
+        ...     retry(raises_custom_error, retries=2, wait=0.01, 
+        ...           retryable_exceptions=MyCustomError)
+        ... except RuntimeError:
+        ...     print("Failed after retries with correct exception")
+        Failed after retries with correct exception
+        
+        >>> # Function that raises non-retryable exception
+        >>> def raises_another_error():
+        ...     raise AnotherError("Another error")
+        >>> try:
+        ...     # Should fail immediately since AnotherError isn't in retryable_exceptions
+        ...     retry(raises_another_error, retries=2, wait=0.01, 
+        ...           retryable_exceptions=MyCustomError)
+        ... except RuntimeError as e:
+        ...     print("Failed immediately due to unrecoverable error")
+        Failed immediately due to unrecoverable error
+        
+        >>> # Using error_handler to control retry behavior
+        >>> def my_error_handler(e, **kwargs):
+        ...     # Only retry ValueError with specific message
+        ...     if isinstance(e, ValueError) and "retry me" in str(e):
+        ...         return True  # Recoverable
+        ...     return False  # Not recoverable
+        >>> 
+        >>> def test_error_handler():
+        ...     raise ValueError("retry me")
+        >>> try:
+        ...     # Should retry since error_handler returns True
+        ...     retry(test_error_handler, retries=2, wait=0.01, error_handler=my_error_handler)
+        ... except RuntimeError:
+        ...     print("Failed after retries with recoverable error")
+        Failed after retries with recoverable error
+        
+        >>> def test_error_handler_unrecoverable():
+        ...     raise ValueError("don't retry me")
+        >>> try:
+        ...     # Should fail immediately since error_handler returns False
+        ...     retry(test_error_handler_unrecoverable, retries=2, wait=0.01, 
+        ...           error_handler=my_error_handler)
+        ... except RuntimeError:
+        ...     print("Failed immediately with unrecoverable error")
+        Failed immediately with unrecoverable error
+        
+        >>> # Multiple retryable exception types
+        >>> def raises_value_error(rnd = [True, False]):
+        ...     if rnd.pop(0):
+        ...         raise ValueError("Value error")
+        ...     return "Correct"
+        >>> try:
+        ...     out, num_failures = retry(raises_value_error, retries=2, wait=0.01,
+        ...         retryable_exceptions=(TypeError, ValueError), return_num_failures=True)
+        ... except RuntimeError:
+        ...     print("This should not be seen")
+        >>> assert out == "Correct"
+        >>> assert num_failures == 1
     """
     assert isinstance(retries, int) and 0 <= retries
     assert isinstance(wait, (int, float)) and 0 <= wait
     assert isinstance(jitter, (int, float)) and 0 <= jitter <= 1
     wait: float = float(wait)
+    
+    # Always convert retryable_exceptions to a tuple of exception types
+    retryable_exceptions: Tuple[Type[Exception], ...] = as_tuple(retryable_exceptions)
+    for exc in retryable_exceptions:
+        assert isinstance(exc, type) and issubclass(exc, Exception)
+
     latest_exception = None
     num_failures: int = 0
     recoverable: bool = True
@@ -230,6 +333,8 @@ def retry(
                     ),
                 )
                 recoverable: bool = get_default(error_handler(e, **error_handler_kw), True)
+            elif retryable_exceptions is not None and not isinstance(e, retryable_exceptions):
+                recoverable: bool = False
             num_failures += 1
             latest_exception = String.prefix_each_line(String.format_exception_msg(e), prefix="    ")
             if not silent:
