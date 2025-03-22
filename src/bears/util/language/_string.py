@@ -12,13 +12,13 @@ from ast import literal_eval
 from collections import defaultdict
 from datetime import datetime, timedelta
 from hashlib import sha256
-from typing import Any, Dict, List, Literal, Optional, Set, Tuple, Type, Union
+from typing import Any, Dict, List, Literal, Optional, Set, Tuple, Type, Union, KeysView, ValuesView
 
 import numpy as np
 import pandas as pd
 from pydantic import confloat, conint, validate_call
 
-from ._function import is_function
+from ._function import get_fn_spec, is_function
 from ._import import np_bool, np_floating, np_integer, optional_dependency
 from ._string_data import RANDOM_ADJECTIVES, RANDOM_NAME_LEFT, RANDOM_NAME_RIGHT, RANDOM_NOUNS, RANDOM_VERBS
 
@@ -1110,7 +1110,9 @@ class String:
         """
 
         def hash_rec(val, base):
-            if isinstance(val, list):
+            if isinstance(val, (set, frozenset, KeysView)):
+                val: List = sorted(list(val))
+            if isinstance(val, (list, tuple, ValuesView)):
                 return hash_rec(",".join([hash_rec(x, base=base) for x in val]), base=base)
             elif isinstance(val, dict):
                 return hash_rec(
@@ -1120,6 +1122,8 @@ class String:
                     ],
                     base=base,
                 )
+            elif is_function(val):
+                return hash_rec(get_fn_spec(val).source_body)
             return cls.convert_integer_to_base_n_str(
                 int(sha256(str(val).encode("utf8")).hexdigest(), 16), base=base
             )
