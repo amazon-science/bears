@@ -1123,7 +1123,7 @@ class String:
                     base=base,
                 )
             elif is_function(val):
-                return hash_rec(get_fn_spec(val).source_body)
+                return hash_rec(get_fn_spec(val, parse_source=True).source_body)
             return cls.convert_integer_to_base_n_str(
                 int(sha256(str(val).encode("utf8")).hexdigest(), 16), base=base
             )

@@ -120,8 +120,8 @@ class FunctionSpec(BaseModel):
     name: str
     qualname: str
     resolved_name: str
-    source: str
-    source_body: str
+    source: Optional[str]
+    source_body: Optional[str]
     args: Tuple[str, ...]
     varargs_name: Optional[str]
     kwargs: Tuple[str, ...]
@@ -198,14 +198,14 @@ class FunctionSpec(BaseModel):
         return self.num_args_and_kwargs - self.num_default_args_and_kwargs
 
 
-def get_fn_spec(fn: Callable) -> FunctionSpec:
+def get_fn_spec(fn: Callable, *, parse_source: bool = False) -> FunctionSpec:
     if hasattr(fn, "__wrapped__"):
         """
         if a function is wrapped with decorators, unwrap and get all args
         eg: pd.read_csv.__code__.co_varnames returns (args, kwargs, arguments) as its wrapped by a decorator @deprecate_nonkeyword_arguments
         This line ensures to unwrap all decorators recursively
         """
-        return get_fn_spec(fn.__wrapped__)
+        return get_fn_spec(fn.__wrapped__, parse_source=parse_source)
     argspec: inspect.FullArgSpec = inspect.getfullargspec(fn)  ## Ref: https://stackoverflow.com/a/218709
 
     args: Tuple[str, ...] = tuple(get_default(argspec.args, []))
@@ -223,12 +223,15 @@ def get_fn_spec(fn: Callable) -> FunctionSpec:
     )
     default_kwargs: Dict[str, Any] = get_default(argspec.kwonlydefaults, dict())
 
-    try:
-        source, source_body = parsed_fn_source(fn)
-    except IndentationError:
-        source = inspect.getsource(fn)
-        source_args_and_body = re.sub(r"^\s*(def\s+\w+\()", "", source, count=1, flags=re.MULTILINE).strip()
-        source_body: str = source_args_and_body  ## Better than nothing.
+    source: Optional[str] = None
+    source_body: Optional[str] = None
+    if parse_source:
+        try:
+            source, source_body = parsed_fn_source(fn)
+        except IndentationError:
+            source = inspect.getsource(fn)
+            source_args_and_body = re.sub(r"^\s*(def\s+\w+\()", "", source, count=1, flags=re.MULTILINE).strip()
+            source_body: str = source_args_and_body  ## Better than nothing.
     return FunctionSpec(
         name=fn.__name__,
         qualname=fn.__qualname__,
