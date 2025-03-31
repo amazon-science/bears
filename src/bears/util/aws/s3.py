@@ -5,7 +5,7 @@ import os
 import pickle
 import random
 import time
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Union, Iterator
 from urllib.parse import ParseResult, urlparse
 
 import boto3
@@ -150,39 +150,76 @@ class S3Util:
         return String.readable_bytes(size_in_bytes, decimals=decimals)
 
     @classmethod
-    def list_recursive_objects_in_dir(cls, *args, **kwargs) -> List[str]:
-        return cls.list(*args, **kwargs)
-
-    @classmethod
     def list(
         cls,
         s3_path: str,
         *,
         file_glob: str = String.DOUBLE_ASTERISK,
         ignored_files: Union[str, List[str]] = String.FILES_TO_IGNORE,
+        iter: bool = False,
         **kwargs,
-    ) -> List[str]:
+    ) -> Union[List[str], Iterator[str]]:
+        """
+        List objects in an S3 path with filtering capabilities.
+        
+        Args:
+            s3_path: The S3 path to list objects from.
+            file_glob: A glob pattern to filter the results.
+            ignored_files: Files to exclude from the results.
+            iter: If True, returns an iterator that yields paths one by one using pagination.
+                 If False (default), returns all paths as a list.
+            **kwargs: Additional arguments to pass to the list_objects_v2 API.
+        
+        Returns:
+            Either a list of S3 paths or an iterator yielding S3 paths, depending on the iter parameter.
+        
+        Example usage:
+            >>> paths = S3Util.list("s3://my-bucket/my-prefix/")
+            >>> for path in S3Util.list("s3://my-bucket/my-prefix/", iter=True):
+            >>>     print(path)
+        """
         ignored_files: List[str] = as_list(ignored_files)
-        s3 = boto3.resource("s3")
         s3_bucket, object_key = cls.s3_path_exploder(s3_path)
-        s3_bucket_resource = s3.Bucket(s3_bucket)
-        objs_in_dir: List[str] = [
-            obj_path for obj_path in s3_bucket_resource.objects.filter(Prefix=object_key)
-        ]
-        if len(objs_in_dir) == 0:
-            return []
-        objs_in_dir: List[str] = [
-            os.path.join(String.S3_PREFIX, obj_path.bucket_name, obj_path.key) for obj_path in objs_in_dir
-        ]
-        objs_in_dir: List[str] = [
-            obj_path
-            for obj_path in objs_in_dir
-            if fnmatch.fnmatch(String.remove_prefix(obj_path, s3_path), file_glob)
-        ]
-        obj_names_map: Dict[str, str] = {obj_path: os.path.basename(obj_path) for obj_path in objs_in_dir}
-        obj_names_map = remove_values(obj_names_map, ignored_files)
-        objs_in_dir = list(obj_names_map.keys())
-        return objs_in_dir
+        s3_client = boto3.client("s3")
+        
+        paginator = s3_client.get_paginator("list_objects_v2")
+        pagination_params = {"Bucket": s3_bucket, "Prefix": object_key}
+        
+        def process_object(obj: Dict[str, Any]) -> str:
+            """Process a single S3 object and convert it to a path string."""
+            s3_object_path = os.path.join(String.S3_PREFIX, s3_bucket, obj["Key"])
+            return s3_object_path
+        
+        def filter_object(obj_path: str) -> bool:
+            """Check if an object path should be included in the results."""
+            # Apply glob pattern filter
+            if not fnmatch.fnmatch(String.remove_prefix(obj_path, s3_path), file_glob):
+                return False
+            
+            # Apply ignored files filter
+            obj_basename = os.path.basename(obj_path)
+            if obj_basename in ignored_files:
+                return False
+                
+            return True
+        
+        def generator():
+            """Generate S3 paths one by one using pagination."""
+            for page in paginator.paginate(**pagination_params):
+                if "Contents" not in page:
+                    return
+                    
+                for obj in page["Contents"]:
+                    s3_object_path = process_object(obj)
+                    if filter_object(s3_object_path):
+                        yield s3_object_path
+        
+        if iter:
+            return generator()
+        else:
+            # Collect all paths into a list
+            all_paths = list(generator())
+            return all_paths
 
     @classmethod
     def list_subdirs_in_dir(cls, *args, **kwargs) -> List[str]:
@@ -428,7 +465,7 @@ class S3Util:
             s3_fpaths_to_download: List[str] = [
                 s3_fpath
                 for s3_fpath in s3_fpaths
-                if s3_fpath.split(String.SLASH)[-1] in (s3_fnames - local_fnames)
+                if s3_fpath.split(String.SLASH)[[-1]] in (s3_fnames - local_fnames)
             ]
             if len(s3_fpaths_to_download) == 0:
                 return True
