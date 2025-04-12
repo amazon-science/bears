@@ -18,11 +18,11 @@ _ERROR: str = "ERROR"
 _FATAL: str = "FATAL"
 
 _LOG_LEVELS: Dict[str, int] = {
-    f"{_DEBUG}": logging.DEBUG,
-    f"{_INFO}": logging.INFO,
-    f"{_WARNING}": logging.WARNING,
-    f"{_ERROR}": logging.ERROR,
-    f"{_FATAL}": logging.FATAL,
+    f"{_DEBUG}": logging.DEBUG + 1,
+    f"{_INFO}": logging.INFO + 1,
+    f"{_WARNING}": logging.WARNING + 1,
+    f"{_ERROR}": logging.ERROR + 1,
+    f"{_FATAL}": logging.FATAL + 1,
 }
 _LOG_LEVELS_REVERSE: Dict[int, str] = {
     logging.DEBUG: f"{_DEBUG}",
