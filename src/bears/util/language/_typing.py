@@ -443,7 +443,7 @@ class Parameters(BaseModel, ABC):
                 else:
                     errors_str += f"\n[Error#{error_i + 1}] Input: {String.pretty(error['input'])}"
             raise ValueError(
-                f"Cannot create Pydantic instance of type '{self.class_name}', "
+                f"Cannot create Pydantic instance of type '{self.class_name}' {self.__class__}, "
                 f"encountered following validation errors: {errors_str}"
                 f"\nInputs to '{self.class_name}' constructor are {tuple(data.keys())}:"
                 f"\n{String.pretty(data)}"
@@ -452,7 +452,7 @@ class Parameters(BaseModel, ABC):
         except Exception as e:
             error_msg: str = String.prefix_each_line(String.format_exception_msg(e), "    ")
             raise ValueError(
-                f"Cannot create Pydantic instance of type '{self.class_name}', "
+                f"Cannot create Pydantic instance of type '{self.class_name}' {self.__class__}, "
                 f"encountered exception:\n{error_msg}"
                 f"\nInputs to '{self.class_name}' constructor are {tuple(data.keys())}:"
                 f"\n{String.pretty(data)}"
@@ -545,7 +545,7 @@ class UserEnteredParameters(Parameters):
 
     @model_validator(mode="before")
     @classmethod
-    def convert_params_to_lowercase(cls, values: Dict) -> Dict:
+    def _convert_params_to_lowercase(cls, values: Dict) -> Dict:
         return {str(k).strip().lower(): v for k, v in values.items()}
 
 

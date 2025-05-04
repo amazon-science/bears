@@ -61,7 +61,7 @@ class Reader(Parameters, Registry, ABC):
 
     @model_validator(mode="before")
     @classmethod
-    def convert_params(cls, params: Dict) -> Dict:
+    def _reader_convert_params(cls, params: Dict) -> Dict:
         Alias.set_retry(params)
         params["params"] = cls._convert_params(cls.Params, params.get("params"))
         return params

@@ -23,7 +23,7 @@ class Notifier(Parameters, Registry, ABC):
 
     @model_validator(mode="before")
     @classmethod
-    def convert_params(cls, params: Dict):
+    def _notify_convert_params(cls, params: Dict):
         params["name"] = cls.class_name
         return params
 

@@ -3,7 +3,7 @@ from typing import ClassVar, Dict, NoReturn, Optional, Tuple, Union
 
 from bears.core.frame import ScalableDataFrame, ScalableDataFrameRawType, ScalableSeries
 from bears.util import MutableParameters, Registry, UserEnteredParameters
-from pydantic import model_validator
+from pydantic import model_validator, ConfigDict
 
 from bears.constants import DataLayout, MissingColumnBehavior, MLType, MLTypeSchema
 
@@ -36,7 +36,9 @@ class DataProcessor(MutableParameters, Registry, ABC):
                     case: Literal['lowercase', 'uppercase']
         """
 
-        pass
+        model_config = ConfigDict(
+            extra="ignore",
+        )
 
     name: str = None
     data_schema: Optional[MLTypeSchema] = None
@@ -57,7 +59,9 @@ class DataProcessor(MutableParameters, Registry, ABC):
 
     @model_validator(mode="before")
     @classmethod
-    def convert_params(cls, params: Dict):
+    def _data_processor_convert_params(cls, params: Dict):
+        cls.set_default_param_values(params.get("params"))
+        print(f'{cls} params: {params}')
         if params.get("name") is None:
             params["name"] = cls.class_name
         params["params"] = super(DataProcessor, cls)._convert_params(cls.Params, params.get("params"))

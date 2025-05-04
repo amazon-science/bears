@@ -112,13 +112,20 @@ def relative_increase(
         raise NotImplementedError(f'Unsupported `method`: "{how}"')
 
 
-def to_pct(counts: pd.Series):  ## Converts value counts to percentages
+def to_pct(counts: pd.Series, decimals: int = 1):  ## Converts value counts to percentages
     _sum = counts.sum()
-    return pd.DataFrame(
-        {
-            "value": counts.index.tolist(),
-            "count": counts.tolist(),
-            "pct": counts.apply(lambda x: 100 * x / _sum).tolist(),
-            "count_str": counts.apply(lambda x: f"{x} of {_sum}").tolist(),
-        }
+    return (
+        pd.DataFrame(
+            {
+                "value": counts.index.tolist(),
+                "pct": counts.apply(lambda x: 100 * x / _sum)
+                .round(decimals)
+                .apply(lambda x: f"{x}%")
+                .tolist(),
+                "count": counts.tolist(),
+                "count_str": counts.apply(lambda x: f"{x} of {_sum}").tolist(),
+            }
+        )
+        .sort_values("value", ascending=True)
+        .reset_index(drop=True)
     )

@@ -229,7 +229,8 @@ class ProgressBar(MutableParameters):
         self.pbar.refresh()
 
     def __del__(self):
-        self.pbar.close()
+        if hasattr(self, "pbar") and self.pbar is not None:
+            self.pbar.close()
 
 
 def create_progress_bar(

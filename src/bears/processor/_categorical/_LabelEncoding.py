@@ -74,8 +74,15 @@ class LabelEncoding(SingleColumnProcessor, TextOrLabelInputProcessor, EncodedLab
                 ]
             return params
 
-    label_encoding_dict: Dict[Any, int] = None  ## Stores normalized labels if label_normalizer is not None
-    label_decoding_dict: Dict[int, Any] = None  ## Stores normalized labels if label_normalizer is not None
+    label_encoding_dict: Optional[Dict[Any, int]] = None  ## Stores normalized labels if label_normalizer is not None
+    label_decoding_dict: Optional[Dict[int, Any]] = None  ## Stores normalized labels if label_normalizer is not None
+
+    # @model_validator(mode="before")
+    # @classmethod
+    # def _label_encoding_convert_params(cls, params: Dict):
+    #     cls.set_default_param_values(params)
+    #     print(f'LabelEncoding params: {params}')
+    #     return params
 
     @classmethod
     def from_labelspace(
