@@ -2,6 +2,10 @@ name: Linting
 
 on: [push, pull_request]
 
+
+permissions:
+  contents: read
+
 jobs:
   ruff-formatter:
     runs-on: ubuntu-latest
