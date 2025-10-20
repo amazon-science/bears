@@ -5,6 +5,10 @@ on:
     types:
     - published  # Published through GitHub UI: https://github.com/amazon-science/bears/releases/new
 
+
+permissions:
+  contents: read
+
 jobs:
   pypi:
     runs-on: ubuntu-latest
